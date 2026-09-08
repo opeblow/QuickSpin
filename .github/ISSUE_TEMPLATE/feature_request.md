@@ -21,5 +21,5 @@ labels: enhancement
 
 - [ ] Improves waiting experience
 - [ ] Improves repeatability
-- [ ] Supports monetization / Vault
+- [ ] Supports monetization (checkout preview / plans)
 - [ ] Developer experience / docs

@@ -1,17 +1,19 @@
 # QuickSpin
 
-> **Make Waiting for AI Fun** — a monetizable, embeddable wait-game SDK for any AI app.
+> Turn AI wait time into play time — an embeddable wait-game SDK for any AI app.
 
-Built for the **Commonsmade "Make Waiting for AI Fun" hackathon** (Aug 27 – Sep 17, 2026).
+Built for the **Commonsmade "Make Waiting for AI Fun" build challenge**.
 
-QuickSpin turns the dead seconds while a thinking model reasons, drafts, or generates into a
-playable arcade. Models like o1/Claude reasoning can stall for 10–60s+; that's dead time where
-users churn. QuickSpin makes it fun — and gives the host app a real, monetizable surface.
+The seconds that vanish on a "thinking…" spinner are the weakest moment in every AI product.
+QuickSpin swaps that dead wait for a playable arcade inside a drop-in widget: your users play
+while the model reasons, and the wait ends with the game.
 
-- **Demo** — the fake "AI client" on the left drives the live widget on the right. Click **Run a fake AI wait**.
-- **Repeatability loop** — streaks, best scores, total wait→play time, per-game leaderboard (all local, `localStorage`).
-- **Vault-ready monetization** — Free/Pro plans + simulated checkout, `$20k + 80% revenue` story.
-- **Drop-in embed** — 3 lines in any AI app, no rewiring of your model call.
+The repo is split in two:
+
+- **`src/sdk/`** — the actual product. A TypeScript library you can `npm install` and drop into any
+  AI app (the games, the widget, sessions, streaks, and the checkout preview).
+- **`src/demo/`** — a demo host app: a one-message AI client whose simulated model wait appears as
+  a classic spinner (before) or as a QuickSpin game (after).
 
 ---
 
@@ -22,109 +24,140 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Production build + typecheck:
+The demo runs entirely in your browser. The "AI wait" is simulated locally.
+
+Full local suite:
 
 ```bash
-npm run build      # tsc --noEmit && vite build
-npm run preview    # serve the production bundle
+npm run check      # typecheck + prettier + vitest + SDK build (ESM/CJS/IIFE + .d.ts)
+npm run build      # demo production build (tsc --noEmit + vite build)
+npm run preview    # serve the demo build
 ```
 
-## The product
-
-| Layer              | Files                                  | What it is                                                              |
-| ------------------ | -------------------------------------- | ----------------------------------------------------------------------- |
-| **SDK**            | `src/sdk/`                             | The embeddable widget — the actual product                              |
-| **Games**          | `src/sdk/runner.ts`, `src/sdk/fish.ts` | Canvas games (Wait Runner, Fish Rush)                                   |
-| **Widget chassis** | `src/sdk/widget.ts`                    | 60fps loop, progress bar, status, streak, game switcher, upgrade button |
-| **Repeatability**  | `src/sdk/persistence.ts`               | Streaks, best scores, total wait→play time, leaderboard                 |
-| **Monetization**   | `src/sdk/paywall.ts`                   | Free/Pro plans + simulated checkout flow                                |
-| **Demo host**      | `src/demo/`                            | Marketing/pitch page + fake AI client driving the widget                |
-
-## Integrating into a real AI app
+## Integrate in any AI app
 
 ```ts
-import { makeItFun } from "@quickspin/sdk";
+import { createQuickSpin } from "quickspin";
 
-const ctrl = makeItFun({
-  gameId: "runner",
-  onCheckout: (plan) => stripe.checkout(plan),
-  onProgress: () => undefined, // optional host-driven visibility
+const quickSpin = createQuickSpin({
+  target: "#quickspin", // or an element
+  game: "runner", // "runner" | "orbit"
+  theme: { mode: "dark", primary: "#8b7cff" },
+  onEvent: (e) => analytics.observe(e), // session-start, phase, progress, session-complete…
 });
 
-// inside your model call / stream:
-ctrl.progress(0.05, "Reasoning…");
-ctrl.progress(0.5, "Drafting…");
-ctrl.done(); // wait over — streak advances
+const session = quickSpin.start({ status: "Reasoning…" });
+session.setPhase("Drafting…");
+session.setProgress(0.5); // or setProgress() for indeterminate — most hosts know the
+// phase but not a truthful percentage
+const response = await modelRequest();
+session.complete(); // the wait ends with the game, and the widget hands off
+
+// Or wrap the whole request:
+const answer = await quickSpin.track(aiRun(prompt), { status: "Thinking…" });
+// rejection calls session.fail(error) automatically
 ```
 
-Headerless drop-in for a plain `<script>` page:
+No-progress hosts can skip `setProgress` entirely — the widget shows an indeterminate bar and the
+games ramp on phase changes. There is **no fabricated state anywhere**: scores come from real game
+state at `complete()` time, and streaks are recomputed from persisted sessions.
+
+Declarative mounting for plain pages:
 
 ```html
-<div data-waiting-widget></div>
-<script type="module" src="/path/to/quickspin.js"></script>
-<!-- auto-inits -->
+<div id="quickspin"></div>
+<!-- `quickspin.iife.js` sets up window.QuickSpin -->
+<script>
+  QuickSpin.autoInit(); // hydrates every [data-quickspin] + #quickspin
+</script>
 ```
 
-### Controller API
+React:
 
-- `progress(p, status?)` — drive 0..1 wait progress + live status text.
-- `done()` — mark the wait over (hides the widget / shows handoff).
-- `show(visible)` — force show/hide.
-- `startGame(id?)` — switch/start a game by id (`"runner"`, `"fish"`).
-- `destroy()` — tear down.
+```tsx
+import { QuickSpinWidget } from "quickspin/react";
 
-### Public SDK exports
+<QuickSpinWidget
+  game="orbit"
+  theme={{ mode: "light" }}
+  onReady={(c) => {
+    mySession = c.start({ status: "Reasoning…" });
+  }}
+/>;
+```
 
-`makeItFun`, `GAMES`, `GAME_IDS`, `PLANS`, `createCheckoutFlow`,
-`leaderboard`, `bestScore`, `totalWaitedSeconds`, `resetAll`.
+## Widget behavior
 
-## Architecture: the engine never waits for the AI
+- Own **one animation loop** — games run at 60fps and never race the network; the widget pauses
+  when hidden or when the tab is hidden.
+- **Shadow DOM** + CSS variables: page styles can't leak in, and the SDK's styles can't leak out.
+  Themes are `{ mode, primary, surface, elevated, game, text, muted, border, success, radius, font }`.
+- **Perceived-wait question** after every completed wait ("That took 18s. How long did it feel?").
+  The felt-vs-actual reduction is emitted as a `perceived-wait` event — real data you can use.
+- **Honest streaks** — `dayStreak` (consecutive calendar days) and `sessionStreak` (consecutive
+  completed waits). Personal bests and the leaderboard are **local** (this device / `localStorage`).
+- Keyboard + pointer for every game, `role="status"` aria-live updates, focusable controls, and
+  `prefers-reduced-motion` styles.
 
-The core design principle (borrowed from the winning Anthropic "Conductr" approach):
+## Pricing (checkout preview)
 
-- The **game loop runs at 60fps, independent of the network** — it never blocks on the model call.
-- The **model's progress updates the game state** (difficulty ramp, status text, progress bar) asynchronously.
-- When the AI finishes, the **streak advances** — turning every wait into a persistent, revisit-me loop.
+The pricing section lists **only features that exist today**; anything planned is labeled
+"after the hackathon". The widget itself never shows pricing — checkout lives on the host's page.
 
-Perceived wait time is the unit of design: mirrors by elevators, Chrome's dino runner. QuickSpin
-applies the same principle to the AI economy's most common dead moment.
+```ts
+const checkout = createCheckoutFlow(async (planId) => {
+  const res = await stripe.checkout({ priceId: priceFor(planId) });
+  return { ok: res.succeeded, paymentId: res.id };
+});
+checkout.open();
+```
+
+Success is only ever rendered from that callback's result — the SDK never claims a payment was
+made. In the demo it's a labeled preview; no real payment is made.
+
+## SDK build
+
+```bash
+npm run build:sdk
+```
+
+Produces `dist/` with ESM (`quickspin.js`), CJS (`quickspin.cjs`), a browser IIFE
+(`quickspin.iife.js`), the React entry (`quickspin-react.js` / `.cjs`), and `.d.ts` types — wired up
+through `exports` in `package.json` (`quickspin` and `quickspin/react` subpaths).
 
 ## Project layout
 
 ```
 .
-├── index.html            # demo entry
+├── index.html                  # demo entry
 ├── src/
-│   ├── sdk/              # the embeddable SDK (product)
-│   │   ├── index.ts      # public API + autoInit
-│   │   ├── widget.ts     # widget chassis + lifecycle
-│   │   ├── runner.ts     # Wait Runner game
-│   │   ├── fish.ts       # Fish Rush game
-│   │   ├── persistence.ts# streaks / scores / leaderboard
-│   │   ├── paywall.ts    # plans + simulated checkout
-│   │   └── types.ts      # contracts
-│   └── demo/             # pitch page + fake AI client
-├── .github/workflows/    # CI, CodeQL, labeler, stale, release
-└── package.json
+│   ├── sdk/
+│   │   ├── index.ts            # public API, autoInit, window.QuickSpin
+│   │   ├── widget.ts           # controller: one RAF loop, sessions, overlays, themes
+│   │   ├── state-machine.ts    # explicit session lifecycle (no progress inference)
+│   │   ├── runner.ts           # Wait Runner — pure physics + canvas game
+│   │   ├── orbit.ts            # Orbit Catch — multi-catch, combo-scored
+│   │   ├── persistence.ts      # metrics, streaks, local bests (localStorage)
+│   │   ├── paywall.ts          # honest plans + checkout preview
+│   │   ├── styles.ts           # shadow-DOM widget CSS (CSS-variable themes)
+│   │   └── types.ts            # contracts
+│   ├── react/QuickSpinWidget.tsx  # React wrapper (quickspin/react)
+│   ├── test/setup.ts           # vitest localStorage shim
+│   └── demo/                   # landing page + before/after host demo
+├── vite.config.lib.ts          # ESM+CJS lib build
+├── vite.config.iife.ts         # IIFE build
+├── tsconfig.lib.json           # .d.ts build
+└── vitest.config.ts
 ```
-
-## Deadline & prizes
-
-- **Deadline:** Sep 17, 2026 (three-week build, started Aug 27)
-- **1st:** $20,000 · **2nd:** $8,000 · **3rd:** $4,000 · **4th–19th:** $500 each
-- **Vault prize:** $20,000 + 80% of revenue generated by the winning entry
-- **Category:** AI | Online
 
 ## FAQ
 
-**What exactly should we build?** The hackathon brief was not fully public at listing time, but the
-theme — and the winning play we architected against the five public rubric criteria
-(waiting experience, originality, AI-native fit, repeatability, execution) — is a product that makes
-the AI waiting window genuinely enjoyable, repeatable, and monetizable.
+**What exactly was built?** For the "Make Waiting for AI Fun" challenge: a product that makes the
+AI waiting window enjoyable, repeatable (streaks, bests, perceived-wait data), and monetizable —
+without pretending features exist yet.
 
-**Why a widget instead of one game?** Repeatability. A single novelty game scores poorly on the
-rubric's repeatability criterion. A drop-in layer tied to _every_ wait in _every_ AI app keeps the
-user coming back dozens of times a day — and it's the layer with the Vault-revenue story.
+**Why a widget instead of one game?** Repeatability. A single novelty game is a one-time novelty. A
+layer that gamifies _every_ wait in _every_ AI app brings users back dozens of times a day.
 
 ## License
 

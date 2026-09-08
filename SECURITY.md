@@ -35,8 +35,10 @@ This repo is a **client-side prototype**. Notable attack surface:
   text as untrusted input. We never `innerHTML` user-controlled strings, but if you find a path
   that does, that's a high-priority report.
 - **`localStorage` persistence** — streaks/scores are mutable locally. Not a security boundary.
-- **Simulated checkout** — the Vault payment flow is **fake** (`sim_*` IDs, no real charge).
-  Never rely on it for real payments. Production must swap in a real gateway.
+- **Checkout preview** — QuickSpin never claims a payment happened. A success screen renders
+  only when the host's `onCheckout` callback resolves `{ ok: true }`; otherwise an explicit
+  "no payment was made" state is shown. Production must provide a real gateway through that
+  callback.
 
 ## Responsible disclosure
 

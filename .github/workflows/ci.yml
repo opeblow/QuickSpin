@@ -32,14 +32,26 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test
+        run: npm run test
+
       - name: Build
         run: npm run build
+
+      - name: Build SDK
+        run: npm run build:sdk
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: quickspin-dist-${{ matrix.node }}
+          name: quickspin-sdk-dist-${{ matrix.node }}
           path: dist/
+
+      - name: Upload demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quickspin-demo-dist-${{ matrix.node }}
+          path: dist-demo/
 
   format-check:
     name: Format check
