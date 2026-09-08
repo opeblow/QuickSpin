@@ -1,0 +1,22 @@
+{
+  "name": "quickspin",
+  "version": "1.0.0",
+  "description": "QuickSpin — make waiting for AI fun. A monetizable, embeddable wait-game SDK for any AI app, built for the Commonsmade 'Make Waiting for AI Fun' hackathon.",
+  "author": "QuickSpin team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/opeblow/QuickSpin.git"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8"
+  }
+}

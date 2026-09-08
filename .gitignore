@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local config / tooling
+.opencode/
+.agents/
+coverage/
+*.tmp
+.tmp/
+.backup/
