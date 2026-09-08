@@ -1,180 +1,46 @@
 import "./demo.css";
-import { makeItFun, GAMES, resetAll } from "../sdk/index";
-import type { WaitingController } from "../sdk/types";
+import { createQuickSpin } from "../sdk/index";
+import type { PlanOption, QuickSpinController, WaitEventHandler } from "../sdk/types";
+import { PLANS, createCheckoutFlow } from "../sdk/paywall";
+import {
+  bestLabel,
+  currentDayStreak,
+  perceivedWaitStats,
+  resetAll,
+  totalSessions,
+  totalWaitTurnedToPlayMs,
+} from "../sdk/index";
 
-function el(tag: string, cls?: string, html?: string): HTMLElement {
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+const PHASES: Array<[string, number, number]> = [
+  ["Reasoning…", 0.1, 700],
+  ["Searching the web…", 0.3, 900],
+  ["Drafting…", 0.6, 900],
+  ["Polishing…", 0.85, 700],
+];
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  cls?: string,
+  html?: string
+): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (cls) node.className = cls;
   if (html != null) node.innerHTML = html;
   return node;
 }
 
-function buildPage(): HTMLElement {
-  const page = el("div", "page");
-
-  page.appendChild(
-    el(
+function logEvents(root: HTMLElement): WaitEventHandler {
+  return (e) => {
+    const line = el(
       "div",
-      "nav",
-      `<div class="logo">quick<span>spin</span></div><small>Make Waiting for AI Fun · Commonsmade · Sep 17 2026</small>`
-    )
-  );
-
-  const hero = el("div", "hero");
-  hero.appendChild(
-    el("h1", "", `Every second you wait on AI, the winner takes <em>another step ahead.</em>`)
-  );
-  hero.appendChild(
-    el(
-      "p",
       "",
-      `Waiting on a thinking model is the deadliest UX moment in AI. ` +
-        `QuickSpin turns that dead time into a playable arcade — a drop-in widget any AI app can embed. ` +
-        `You play while the model works. The wait ends with the game.`
-    )
-  );
-  hero.appendChild(
-    el(
-      "p",
-      "sub",
-      `Live demo below. Play while the fake model “thinks,” then watch the streak build.`
-    )
-  );
-  const badges = el("div", "badges");
-  badges.innerHTML = `
-    <span class="badge hot">AI-native fit</span>
-    <span class="badge hot">Repeatability loop</span>
-    <span class="badge">Monetizable (Vault)</span>
-    <span class="badge">Embeddable SDK</span>
-  `;
-  hero.appendChild(badges);
-  page.appendChild(hero);
-
-  const grid = el("div", "grid");
-
-  const hostPanel = el("div", "panel");
-  hostPanel.appendChild(el("div", "hostlabel", "HOST APP — a fake AI client"));
-  hostPanel.appendChild(el("h2", "", "Ask the model something"));
-  hostPanel.appendChild(
-    el(
-      "p",
-      "hint",
-      "This is the “before” — a plain progress bar. Watch the same wait appear as a game on the right."
-    )
-  );
-  const sim = el("div", "sim");
-  const prog = document.createElement("progress");
-  prog.max = 100;
-  prog.value = 0;
-  const progLabel = el("div", "", "0%");
-  sim.appendChild(prog);
-  sim.appendChild(progLabel);
-  hostPanel.appendChild(sim);
-
-  const buttons = el("div", "btnrow");
-  const runBtn = el("button", "run", "▶ Run a fake AI wait (slow reasoning)");
-  const resetBtn = el("button", "ghost", "Reset stats");
-  buttons.appendChild(runBtn);
-  buttons.appendChild(resetBtn);
-  hostPanel.appendChild(buttons);
-  hostPanel.appendChild(
-    el(
-      "p",
-      "hint",
-      "Simulates a deep-reasoning model (o1-style) that takes ~12s. Real integration: call ctrl.progress() from your model stream."
-    )
-  );
-  grid.appendChild(hostPanel);
-
-  const widgetPanel = el("div", "panel");
-  widgetPanel.appendChild(el("div", "hostlabel", "WHILE YOU WAIT — the widget"));
-  const widgetMount = el("div", "");
-  widgetMount.setAttribute("data-waiting-widget", "");
-  widgetPanel.appendChild(widgetMount);
-  widgetPanel.appendChild(
-    el(
-      "p",
-      "hint",
-      "The game runs at 60fps and never blocks on the network. Difficulty ramps with the model's progress. When the wait ends, the streak advances."
-    )
-  );
-  grid.appendChild(widgetPanel);
-
-  page.appendChild(grid);
-
-  const prizes = el("div", "section");
-  prizes.appendChild(el("h2", "", "Why this wins"));
-  prizes.appendChild(
-    el(
-      "p",
-      "hint",
-      "Five rubric criteria: waiting experience, originality, AI-native fit, repeatability, execution. Vote-heavy VibeFi pays toward build-to-earn."
-    )
-  );
-  const prizeGrid = el("div", "prizes");
-  prizeGrid.innerHTML = `
-    <div class="prize"><div class="amt">$20k</div><div class="lbl">1st place — vanilla prize pool</div></div>
-    <div class="prize"><div class="amt">$20k + 80%</div><div class="lbl">The <b>Vault</b> — for the entry that generates real revenue</div></div>
-    <div class="prize"><div class="amt">64×</div><div class="lbl">Perceived-wait principle — mirrors by elevators, Chrome's dino</div></div>
-  `;
-  prizes.appendChild(prizeGrid);
-  page.appendChild(prizes);
-
-  const sec = el("div", "section");
-  sec.appendChild(el("h2", "", "Drop-in embed — 3 lines in any AI app"));
-  sec.appendChild(
-    el(
-      "code",
-      "block",
-      `import { makeItFun } from "@quickspin/sdk";
-const ctrl = makeItFun({ gameId: "runner", onCheckout: (plan) => stripe.checkout(plan) });
-
-// inside your model call, stream progress:
-ctrl.progress(0.05, "Reasoning…");
-ctrl.progress(0.5, "Drafting…");
-ctrl.done();   // wait over — streak advances`
-    )
-  );
-  page.appendChild(sec);
-
-  sec.appendChild(el("h2", "", "Playable right now"));
-  const gameList = el("div", "prizes");
-  const rows = Object.entries(GAMES)
-    .map(
-      ([, g]) =>
-        `<div class="prize"><div class="amt" style="font-size:16px;">${g.name}</div><div class="lbl">${g.tagline}</div></div>`
-    )
-    .join("");
-  gameList.innerHTML = rows || `<div class="prize"><div class="lbl">No games loaded</div></div>`;
-  page.appendChild(gameList);
-
-  return page;
-}
-
-let running = false;
-let ctrl: WaitingController | null = null;
-
-function simulateWait(prog: HTMLProgressElement, label: HTMLElement, ctl: WaitingController): void {
-  if (running) return;
-  running = true;
-  const steps = 40;
-  let i = 0;
-  const statuses = ["Reasoning…", "Sketching plan…", "Drafting…", "Polishing…"];
-  const tick = () => {
-    i++;
-    const p = i / steps;
-    prog.value = Math.round(p * 100);
-    label.textContent = Math.round(p * 100) + "%";
-    const st = statuses[Math.min(statuses.length - 1, Math.floor(i / 10))];
-    ctl.progress(p, st);
-    if (i < steps) {
-      window.setTimeout(tick, 300);
-    } else {
-      ctl.done();
-      running = false;
-    }
+      `[${new Date().toLocaleTimeString()}] ${e.type}${e.data ? " " + JSON.stringify(e.data) : ""}`
+    );
+    root.appendChild(line);
+    root.scrollTop = root.scrollHeight;
   };
-  tick();
 }
 
 function main(): void {
@@ -182,21 +48,370 @@ function main(): void {
   if (!app) return;
   app.appendChild(buildPage());
 
-  const mount = app.querySelector("[data-waiting-widget]") as HTMLElement;
-  ctrl = makeItFun({ target: mount, onProgress: () => undefined });
+  const mount = app.querySelector<HTMLElement>("#qs-mount")!;
+  const logEl = app.querySelector<HTMLElement>("#event-log")!;
+  const classicPanel = app.querySelector<HTMLElement>("#classic-panel")!;
+  const qsPanel = app.querySelector<HTMLElement>("#qs-panel")!;
+  const segBtns = Array.from(app.querySelectorAll<HTMLButtonElement>(".seg button"));
+  const runBtn = app.querySelector<HTMLButtonElement>("#run-demo")!;
+  const resetBtn = app.querySelector<HTMLButtonElement>("#reset-stats")!;
+  const phaseEl = app.querySelector<HTMLElement>("#qs-phase")!;
+  const classicPhase = app.querySelector<HTMLElement>("#classic-phase")!;
 
-  const prog = app.querySelector("progress") as HTMLProgressElement;
-  const label = app.querySelector(".sim > div:last-child") as HTMLElement;
-  const runBtn = app.querySelector(".run") as HTMLButtonElement;
-  const resetBtn = app.querySelector(".ghost") as HTMLButtonElement;
-
-  runBtn.addEventListener("click", () => {
-    if (ctrl) simulateWait(prog, label, ctrl);
+  let ctrl: QuickSpinController | null = createQuickSpin({
+    target: mount,
+    onEvent: logEvents(logEl),
   });
+  let mode: "classic" | "quickspin" = "quickspin";
+  let running = false;
+
+  const setMode = (m: "classic" | "quickspin") => {
+    mode = m;
+    for (const b of segBtns)
+      b.setAttribute("aria-pressed", m === b.dataset.mode ? "true" : "false");
+    classicPanel.style.display = m === "classic" ? "" : "none";
+    qsPanel.style.display = m === "quickspin" ? "" : "none";
+  };
+
+  const appendBubble = (label: string, cls: "user" | "ai"): void => {
+    const chat = (mode === "classic" ? classicPanel : qsPanel).querySelector<HTMLElement>(".chat")!;
+    const b = el("div", "bubble " + cls, label);
+    chat.appendChild(b);
+    b.scrollIntoView({ block: "nearest" });
+  };
+
+  const runClassic = async () => {
+    classicPhase.innerHTML = "";
+    const chat = classicPanel.querySelector<HTMLElement>(".chat")!;
+    const track = chat.querySelector<HTMLElement>(".thinking")!;
+    const fill = chat.querySelector<HTMLElement>(".fill") as HTMLElement;
+    const label = chat.querySelector<HTMLElement>(".progress-label")!;
+    track.style.display = "flex";
+    track.querySelector<HTMLElement>(".spinner-label")!.textContent = PHASES[0][0];
+    for (const [status, p, ms] of PHASES) {
+      track.querySelector<HTMLElement>(".spinner-label")!.textContent = status;
+      fill.style.width = `${Math.round(p * 100)}%`;
+      label.textContent = `${Math.round(p * 100)}%`;
+      await sleep(ms);
+    }
+    fill.style.width = "100%";
+    label.textContent = "100%";
+    track.style.display = "none";
+    appendBubble("Here are five spots — assuming everyone still likes tacos.", "ai");
+  };
+
+  const runQuickSpin = async () => {
+    phaseEl.innerHTML = "Phase: <strong>" + PHASES[0][0] + "</strong>";
+    const session = ctrl!.start({ status: PHASES[0][0] });
+    for (const [status, p, ms] of PHASES) {
+      session.setPhase(status);
+      session.setProgress(p);
+      phaseEl.innerHTML = "Phase: <strong>" + status + "</strong>";
+      await sleep(ms);
+    }
+    session.complete();
+    phaseEl.innerHTML = "Phase: <strong>Done</strong> — the widget hands off.";
+    appendBubble("Here are five spots — assuming everyone still likes tacos.", "ai");
+    refreshStats();
+  };
+
+  const runDemo = async () => {
+    if (running) return;
+    running = true;
+    runBtn.disabled = true;
+    runBtn.textContent = "Generating…";
+    appendBubble("Where should five friends eat tonight in Austin?", "user");
+    if (mode === "classic") await runClassic();
+    else await runQuickSpin();
+    running = false;
+    runBtn.disabled = false;
+    runBtn.textContent = "Run demo generation";
+  };
+
+  const refreshStats = (): void => {
+    const set = (id: string, v: string) => {
+      const n = app.querySelector<HTMLElement>(`#${id} .num`);
+      if (n) n.textContent = v;
+    };
+    set("stat-sessions", String(totalSessions()));
+    set("stat-wait", formatMs(totalWaitTurnedToPlayMs()));
+    set("stat-best", bestLabel("runner") ?? "—");
+    const ps = perceivedWaitStats();
+    set("stat-felt", ps.samples > 0 ? `${Math.round(ps.avgRatio * 100)}%` : "—");
+    set("stat-streak", String(currentDayStreak()));
+  };
+
+  runBtn.addEventListener("click", runDemo);
   resetBtn.addEventListener("click", () => {
+    ctrl!.destroy();
+    mount.innerHTML = "";
+    ctrl = createQuickSpin({ target: mount, onEvent: logEvents(logEl) });
     resetAll();
-    window.location.reload();
+    app.querySelector<HTMLElement>("#event-log")!.innerHTML = "";
+    refreshStats();
   });
+
+  for (const b of segBtns) {
+    b.addEventListener("click", () => {
+      if (running) return;
+      setMode((b.dataset.mode as "classic" | "quickspin") ?? "quickspin");
+    });
+  }
+
+  // Game switcher inside the widget is enough; the demo shows runner.
+  setMode("quickspin");
+  refreshStats();
+}
+
+function formatMs(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return `${s}s`;
+}
+
+function renderPlans(root: HTMLElement): void {
+  const grid = el("div", "plans");
+  for (const plan of PLANS) {
+    const card = el("div", "plan" + (plan.highlighted ? " hot" : ""));
+    card.appendChild(
+      el("div", "plan-name", plan.name + (plan.highlighted ? " · RECOMMENDED" : ""))
+    );
+    card.appendChild(el("div", "plan-price", `$${plan.priceUsd} <small>${plan.cadence}</small>`));
+    const ul = el("ul");
+    for (const f of plan.features) {
+      const li = el(
+        "li",
+        "",
+        typeof f === "string"
+          ? f
+          : `${f.text} <span class="note amber">(after the hackathon)</span>`
+      );
+      ul.appendChild(li);
+    }
+    card.appendChild(ul);
+    const buy = el(
+      "button",
+      "btn " + (plan.highlighted ? "primary" : "ghost"),
+      plan.priceUsd === 0 ? "Choose Free (no checkout)" : "Choose Pro — checkout preview"
+    );
+    buy.type = "button";
+    buy.addEventListener("click", () => void choosePlan(plan, buy));
+    card.appendChild(buy);
+    grid.appendChild(card);
+  }
+  root.appendChild(grid);
+}
+
+let checkoutBox: { open(): void; close(): void; destroy(): void } | null = null;
+
+async function choosePlan(plan: PlanOption, btn: HTMLButtonElement): Promise<void> {
+  if (plan.priceUsd === 0) {
+    btn.textContent = "Free plan active";
+    btn.disabled = true;
+    return;
+  }
+  checkoutBox = createCheckoutFlow((_planId) => {
+    // Simulate a payment provider round-trip. Success only renders from this
+    // confirmed result — QuickSpin never fabricates one.
+    return sleep(900).then(() => ({ ok: true, paymentId: `demo_${Date.now()}` }));
+  });
+  checkoutBox.open();
+}
+
+function buildPage(): HTMLElement {
+  const page = el("div", "");
+
+  const nav = el("nav", "nav");
+  nav.appendChild(
+    el(
+      "div",
+      "wrap",
+      `<div class="logo">quick<span>spin</span></div>
+       <ul class="nav-links">
+         <li><a href="#demo">Product</a></li>
+         <li><a href="#games">Games</a></li>
+         <li><a href="#sdk">SDK</a></li>
+         <li><a href="#pricing">Pricing</a></li>
+         <li><a href="#sdk">Docs</a></li>
+       </ul>`
+    )
+  );
+
+  const hero = el("section", "hero wrap");
+  hero.appendChild(el("div", "hero-badge", "Commonsmade Build · Make Waiting for AI Fun"));
+  hero.appendChild(el("h1", "", `Turn AI wait time into <em>play time.</em>`));
+  hero.appendChild(
+    el(
+      "p",
+      "lead",
+      `The seconds that vanish on “thinking…” are the worst moment in every AI app. ` +
+        `QuickSpin is a drop-in widget that turns that dead wait into a playable arcade — ` +
+        `you play while the model works, and the wait ends with the game.`
+    )
+  );
+  const ctaRow = el("div", "cta-row");
+  const runBtn = el("button", "btn primary", "Run demo generation");
+  runBtn.id = "run-demo";
+  runBtn.type = "button";
+  const resetBtn = el("button", "btn ghost", "Reset stats");
+  resetBtn.id = "reset-stats";
+  resetBtn.type = "button";
+  ctaRow.appendChild(runBtn);
+  ctaRow.appendChild(resetBtn);
+  hero.appendChild(ctaRow);
+  hero.appendChild(
+    el("p", "sub", "The wait is simulated locally — the Demo runs entirely in your browser.")
+  );
+
+  const demo = el("section", "demo-section wrap");
+  demo.id = "demo";
+  demo.appendChild(el("div", "hostlabel", "HOST APP — a one-message AI client"));
+  const seg = el("div", "seg");
+  for (const m of ["classic", "quickspin"] as const) {
+    const b = el("button", "", m === "classic" ? "Classic spinner" : "With QuickSpin");
+    b.type = "button";
+    b.dataset.mode = m;
+    seg.appendChild(b);
+  }
+  demo.appendChild(seg);
+  demo.appendChild(
+    el(
+      "div",
+      "seg-label hostlabel",
+      "Choose your fate — same 12-second model wait, two waiting experiences."
+    )
+  );
+
+  const classicPanel = el("div", "");
+  classicPanel.id = "classic-panel";
+  classicPanel.style.display = "none";
+  const classicChat = el("div", "chat");
+  classicChat.innerHTML =
+    `<div class="bubble user">Where should five friends eat tonight in Austin?</div>` +
+    `<div class="thinking"><span class="spinner"></span><span class="spinner-label">Reasoning…</span></div>` +
+    `<div class="progress-track"><div class="fill"></div></div>` +
+    `<div class="progress-label">0%</div>`;
+  const classicPhase = el("div", "qs-phase");
+  classicPhase.id = "classic-phase";
+  classicPanel.appendChild(classicChat);
+  classicPanel.appendChild(classicPhase);
+  demo.appendChild(classicPanel);
+
+  const qsPanel = el("div", "");
+  qsPanel.id = "qs-panel";
+  const qsChat = el("div", "chat");
+  qsChat.innerHTML = `<div class="bubble user">Where should five friends eat tonight in Austin?</div>`;
+  const qsMount = el("div", "qs-mount");
+  qsMount.id = "qs-mount";
+  const qsPhase = el("div", "qs-phase");
+  qsPhase.id = "qs-phase";
+  qsPanel.appendChild(qsChat);
+  qsPanel.appendChild(qsMount);
+  qsPanel.appendChild(qsPhase);
+  demo.appendChild(qsPanel);
+
+  const eventLog = el("div", "event-log");
+  eventLog.id = "event-log";
+  demo.appendChild(eventLog);
+
+  const stats = el("section", "wrap stats-grid");
+  stats.innerHTML =
+    `<div class="stat" id="stat-wait"><div class="num">—</div><div class="lbl">AI wait turned into play</div></div>` +
+    `<div class="stat" id="stat-sessions"><div class="num">—</div><div class="lbl">sessions on this device</div></div>` +
+    `<div class="stat" id="stat-best"><div class="num">—</div><div class="lbl">best wait-run score</div></div>` +
+    `<div class="stat" id="stat-felt"><div class="num">—</div><div class="lbl">felt vs actual wait</div></div>` +
+    `<div class="stat" id="stat-streak"><div class="num">—</div><div class="lbl">day streak</div></div>`;
+
+  const games = el("section", "section wrap");
+  games.id = "games";
+  games.appendChild(el("h2", "", "Games"));
+  games.appendChild(
+    el("p", "", "Short, repeatable, input-friendly. Two to start, more in the game packs.")
+  );
+  const gameList = el("div", "game-list");
+  gameList.innerHTML =
+    `<div class="game"><div class="name">Wait Runner</div><div class="tag">Jump the obstacle, outrun the wait. <kbd>Space</kbd> or tap to jump.</div></div>` +
+    `<div class="game"><div class="name">Orbit Catch</div><div class="tag">Catch the glow target in a row to stack a combo. Tap or click.</div></div>` +
+    `<div class="game"><div class="name">Game packs (Pro)</div><div class="tag">More games after the hackathon.</div></div>`;
+  games.appendChild(gameList);
+
+  const sdk = el("section", "section wrap");
+  sdk.id = "sdk";
+  sdk.appendChild(el("h2", "", "Drop-in SDK"));
+  sdk.appendChild(
+    el(
+      "p",
+      "",
+      `Install the package, mount the widget, and feed it your model phases. When the wait is over, call <code>session.complete()</code> and hand off to the real response.`
+    )
+  );
+  const code = el("div", "code");
+  code.appendChild(
+    el(
+      "pre",
+      "",
+      `<span class="tok-cmt">// npm install quickspin</span>
+<span class="tok-kw">import</span> { createQuickSpin } <span class="tok-kw">from</span> <span class="tok-str">"quickspin"</span>;
+
+<span class="tok-kw">const</span> quickSpin = createQuickSpin({
+  <span class="tok-cmt">// target can be a selector or element</span>
+  target: <span class="tok-str">"#quickspin"</span>,
+  game: <span class="tok-str">"runner"</span>,                    <span class="tok-cmt">// "runner" | "orbit"</span>
+  theme: { mode: <span class="tok-str">"dark"</span>, primary: <span class="tok-str">"#8b7cff"</span> },
+  onEvent: (e) => analytics.observe(e),
+});
+
+<span class="tok-kw">const</span> session = quickSpin.start({ status: <span class="tok-str">"Reasoning…"</span> });
+session.setPhase(<span class="tok-str">"Drafting…"</span>);
+session.setProgress(0.5);          <span class="tok-cmt">// or setProgress() for indeterminate</span>
+
+<span class="tok-kw">const</span> response = <span class="tok-kw">await</span> modelRequest();
+session.complete();                <span class="tok-cmt">// the wait ends with the game</span>
+
+<span class="tok-cmt">// wrap a whole request:</span>
+<span class="tok-kw">const</span> answer = <span class="tok-kw">await</span> quickSpin.track(aiRun(prompt), {
+  status: <span class="tok-str">"Thinking…"</span>,
+});`
+    )
+  );
+  sdk.appendChild(code);
+  sdk.appendChild(
+    el(
+      "p",
+      "sub",
+      `Or mount declared widgets with <code>&lt;div data-quickspin&gt;&lt;/div&gt;</code>. The widget owns its own shadow DOM, so page styles never leak in.`
+    )
+  );
+
+  const pricing = el("section", "section wrap");
+  pricing.id = "pricing";
+  pricing.appendChild(el("h2", "", "Pricing"));
+  pricing.appendChild(
+    el(
+      "p",
+      "",
+      `Only features that exist today are listed — everything else is labeled clearly. ` +
+        `Checkout below is a preview: pick a plan and see what success looks like, but no real payment is made.`
+    )
+  );
+  const plansBox = el("div", "");
+  renderPlans(plansBox);
+  pricing.appendChild(plansBox);
+
+  const footer = el(
+    "footer",
+    "footer wrap",
+    `QuickSpin — an entry for the Commonsmade “Make Waiting for AI Fun” build challenge.`
+  );
+  page.appendChild(nav);
+  page.appendChild(hero);
+  page.appendChild(demo);
+  page.appendChild(stats);
+  page.appendChild(games);
+  page.appendChild(sdk);
+  page.appendChild(pricing);
+  page.appendChild(footer);
+
+  return page;
 }
 
 main();
