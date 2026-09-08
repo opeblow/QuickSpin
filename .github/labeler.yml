@@ -1,0 +1,23 @@
+# Auto-label configuration for github/labeler
+
+"SDK":
+  - changed-files:
+      - any-glob-to-any-file: "src/sdk/**"
+
+"demo":
+  - changed-files:
+      - any-glob-to-any-file: "src/demo/**"
+      - any-glob-to-any-file: "index.html"
+
+"workflows":
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+"docs":
+  - changed-files:
+      - any-glob-to-any-file: "*.md"
+
+"dependencies":
+  - changed-files:
+      - any-glob-to-any-file: "package.json"
+      - any-glob-to-any-file: "package-lock.json"
