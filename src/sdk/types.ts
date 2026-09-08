@@ -1,61 +1,149 @@
-export type GamePhase = "idle" | "running" | "paused" | "finished";
+export type SessionStatus =
+  | "idle"
+  | "waiting"
+  | "playing"
+  | "response-ready"
+  | "completed"
+  | "cancelled"
+  | "failed"
+  | "destroyed";
+
+export type EndReason = "ai-complete" | "player-failed" | "cancelled";
 
 export interface GameResult {
-  /** Normalized score — every game should produce something comparable. */
+  /** Actual gameplay score — never fabricated. */
   score: number;
-  /** Human readable score for display. */
   label: string;
-  /** Extra info shown on the finish screen, e.g. "3 streaks", "New high". */
   notes: string[];
+  reason: EndReason;
 }
 
-/** What a single playable game exposes to the widget chassis. */
-export interface GameDefinition {
-  id: string;
-  name: string;
-  tagline: string;
-  /** How to draw/control the game. Implementations build into the canvas owner. */
-  create(host: GameHost): GameInstance;
+export interface WaitMetrics {
+  actualWaitMs: number;
+  engagedPlayMs: number;
+  gameId: string | null;
+  score: number | null;
+  feltWaitMs?: number | null;
+}
+
+export interface WaitEvent {
+  type:
+    | "session-start"
+    | "phase"
+    | "progress"
+    | "game-start"
+    | "score"
+    | "session-complete"
+    | "perceived-wait"
+    | "cancel"
+    | "fail";
+  data?: unknown;
+}
+
+export type WaitEventHandler = (event: WaitEvent) => void;
+
+export interface ThemeConfig {
+  /** Light or dark game-stage palette. */
+  mode?: "dark" | "light";
+  primary?: string;
+  surface?: string;
+  /** Cards, buttons, elevated surfaces. */
+  elevated?: string;
+  /** The game canvas/stage surface. */
+  game?: string;
+  text?: string;
+  muted?: string;
+  border?: string;
+  success?: string;
+  radius?: string;
+  font?: string;
+}
+
+export interface WaitSession {
+  /** Update the visible AI phase label ("Drafting…"). */
+  setPhase(phase: string): void;
+  /**
+   * Set progress 0..1. Passing nothing (or NaN) switches to an
+   * indeterminate progress state — most hosts know the phase but not a
+   * truthful percentage.
+   */
+  setProgress(value?: number): void;
+  /** Mark the AI wait over and hand off to the response. */
+  complete(): void;
+  cancel(): void;
+  fail(error?: unknown): void;
+}
+
+export interface QuickSpinController {
+  start(options?: { gameId?: string; status?: string }): WaitSession;
+  /**
+   * Wrap an AI request: starts a session, streams through your phases, and
+   * completes it when the promise resolves. Rejections call `fail`.
+   */
+  track<T>(request: Promise<T>, options?: { gameId?: string; status?: string }): Promise<T>;
+  setTheme(theme: ThemeConfig): void;
+  show(): void;
+  hide(): void;
+  destroy(): void;
+  on(handler: WaitEventHandler): () => void;
+  readonly status: SessionStatus;
+}
+
+export interface CreateQuickSpinOptions {
+  target?: string | HTMLElement;
+  game?: string;
+  theme?: ThemeConfig;
+  onEvent?: WaitEventHandler;
+  /** Called with the chosen plan when a host page asks the user to check out. */
+  onCheckout?: (planId: string) => Promise<{ ok: boolean; paymentId?: string }>;
 }
 
 export interface GameHost {
-  /** Canvas element the game can draw into. */
   canvas: HTMLCanvasElement;
-  /** Current wait progress 0..1 (0 = just started, 1 = AI done). */
-  progress: number;
-  /** Live model status text ("Reasoning…", "Generating…"). */
-  status: string;
-  /** Called by the game to signal it finished (or timed out). */
-  finish(result: GameResult): void;
+  root: HTMLElement;
+  /** Logical wait progress 0..1, or null when indeterminate. */
+  progress: number | null;
+  /** Summon a result from the running game for the given reason. */
+  finish(reason: EndReason): GameResult;
+  elapsedMs(): number;
 }
 
 export interface GameInstance {
   start(): void;
-  /** Called exactly once per animation frame while running. */
-  tick(time: number, dt: number): void;
+  /** Called by the controller's single animation loop (not a game-owned RAF). */
+  tick(time: number, delta: number): void;
+  /** Finalize a result for the reason given, always from live game state. */
+  finish(reason: EndReason): GameResult;
   pause(): void;
   resume(): void;
   destroy(): void;
 }
 
-export interface WidgetOptions {
-  /** Element to mount into, or CSS selector. Defaults to [data-waiting-widget]. */
-  target?: string | HTMLElement;
-  gameId?: string;
-  /** Called with progress updates from the host app if it doesn't provide them. */
-  onProgress?: (p: number) => void;
-  theme?: "dark" | "light";
-  /** Callback when the widget requests a checkout (Vault/payment hook). */
-  onCheckout?: (plan: string) => void;
+export interface GameDefinition {
+  id: string;
+  name: string;
+  tagline: string;
+  /** Instructions shown in the widget footer. */
+  controls: string;
+  create(host: GameHost): GameInstance;
 }
 
-export interface WaitingController {
-  /** Set wait progress 0..1 from the host app. */
-  progress(p: number, status?: string): void;
-  /** Mark the wait over — hides the widget / shows the handoff. */
-  done(): void;
-  /** Force show/hide. */
-  show(visible: boolean): void;
-  startGame(id?: string): void;
-  destroy(): void;
+export interface PlanOption {
+  id: string;
+  name: string;
+  priceUsd: number;
+  cadence: string;
+  features: Array<string | { text: string; backlog: boolean }>;
+  highlighted?: boolean;
+  label: string;
 }
+
+export interface CheckoutResult {
+  ok: boolean;
+  planId: string;
+  paymentId?: string;
+  amountUsd: number;
+}
+
+export const GAME_NAME_IDS = ["runner", "orbit"] as const;
+export type GameId = (typeof GAME_NAME_IDS)[number];

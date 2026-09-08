@@ -1,27 +1,36 @@
-const STORAGE_KEY = "waitfun:leaderboard:v1";
+const STORAGE_KEY = "quickspin:sessions:v1";
 
-interface StoredEntry {
+export interface SessionRecord {
   id: string;
-  gameId: string;
-  score: number;
-  label: string;
-  waitedMs: number;
+  gameId: string | null;
+  score: number | null;
+  /** Time from session.start() to session.complete() — the real AI wait. */
+  actualWaitMs: number;
+  /** Time the player was actively in a running game during the wait. */
+  engagedPlayMs: number;
+  /** What the user told us the wait felt like (perceived-wait question). */
+  feltWaitMs: number | null;
+  completed: boolean;
   ts: number;
 }
 
 interface Persisted {
-  entries: StoredEntry[];
+  version: 1;
+  records: SessionRecord[];
 }
 
-function load(): Persisted {
+const CAP = 1000;
+
+export function loadStorage(): Persisted {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { entries: [] };
-    const parsed = JSON.parse(raw) as Persisted;
-    if (!Array.isArray(parsed.entries)) return { entries: [] };
-    return parsed;
+    if (!raw) return { version: 1, records: [] };
+    const parsed = JSON.parse(raw) as Partial<Persisted>;
+    if (!Array.isArray(parsed.records)) return { version: 1, records: [] };
+    const records = parsed.records.filter((r) => typeof r?.ts === "number").slice(-CAP);
+    return { version: 1, records };
   } catch {
-    return { entries: [] };
+    return { version: 1, records: [] };
   }
 }
 
@@ -33,98 +42,103 @@ function save(p: Persisted): void {
   }
 }
 
-let _paused = false;
+let sessionStreakCounter = 0;
 
-export function setPaused(v: boolean): void {
-  _paused = v;
-}
+export function recordSession(input: {
+  gameId: string | null;
+  score: number | null;
+  actualWaitMs: number;
+  engagedPlayMs: number;
+  feltWaitMs?: number | null;
+  completed: boolean;
+}): { isHighScore: boolean; dayStreak: number; sessionStreak: number } {
+  const p = loadStorage();
+  const previousBest = input.gameId ? bestScore(input.gameId) : 0;
+  const isHighScore = input.completed && !!input.gameId && (input.score ?? 0) > previousBest;
 
-export function isPaused(): boolean {
-  return _paused;
-}
-
-export function recordResult(
-  gameId: string,
-  score: number,
-  label: string,
-  waitedMs: number
-): {
-  isHighScore: boolean;
-  streak: number;
-} {
-  const p = load();
-  const previousBest = bestScore(gameId);
-  const isHighScore = score > previousBest;
-  p.entries.push({
-    id: crypto.randomUUID(),
-    gameId,
-    score,
-    label,
-    waitedMs,
+  p.records.push({
+    id: (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) as string,
+    gameId: input.gameId,
+    score: input.completed ? input.score : null,
+    actualWaitMs: input.actualWaitMs,
+    engagedPlayMs: input.engagedPlayMs,
+    feltWaitMs: input.feltWaitMs ?? null,
+    completed: input.completed,
     ts: Date.now(),
   });
-  // Cap storage to avoid unbounded growth.
-  if (p.entries.length > 500) {
-    p.entries = p.entries.slice(-500);
-  }
+  if (p.records.length > CAP) p.records = p.records.slice(-CAP);
   save(p);
-  const streak = currentStreak();
-  return { isHighScore, streak };
+
+  if (input.completed) sessionStreakCounter += 1;
+  else sessionStreakCounter = 0;
+
+  return { isHighScore, dayStreak: currentDayStreak(), sessionStreak: sessionStreakCounter };
 }
 
 export function bestScore(gameId: string): number {
-  const p = load();
-  return p.entries
-    .filter((e) => e.gameId === gameId)
-    .reduce((max, e) => (e.score > max ? e.score : max), 0);
+  const p = loadStorage();
+  return p.records
+    .filter((r) => r.gameId === gameId && r.completed && typeof r.score === "number")
+    .reduce((max, r) => (r.score! > max ? r.score! : max), 0);
 }
 
 export function bestLabel(gameId: string): string | null {
-  const p = load();
-  const best = p.entries.filter((e) => e.gameId === gameId).sort((a, b) => b.score - a.score)[0];
-  return best ? best.label : null;
+  const p = loadStorage();
+  const best = p.records
+    .filter((r) => r.gameId === gameId && r.completed && typeof r.score === "number")
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0];
+  return best ? `${best.score}` : null;
 }
 
-export function totalWaitedSeconds(): number {
-  const p = load();
-  return Math.round(p.entries.reduce((sum, e) => sum + e.waitedMs, 0) / 1000);
+/** Total real AI wait time from completed sessions (i.e. actually gamified). */
+export function totalWaitTurnedToPlayMs(): number {
+  const p = loadStorage();
+  return p.records.filter((r) => r.completed).reduce((sum, r) => sum + r.actualWaitMs, 0);
 }
 
 export function totalSessions(): number {
-  return load().entries.length;
+  return loadStorage().records.length;
 }
 
-export function currentStreak(): number {
-  const p = load();
-  if (p.entries.length === 0) return 0;
-  const DAY = 24 * 60 * 60 * 1000;
-  const dates = new Set(p.entries.map((e) => new Date(e.ts).toDateString()));
-  // Count consecutive trailing days (today included).
-  const today = new Date().toDateString();
-  if (!dates.has(today)) return 0;
+export function completedSessions(): number {
+  return loadStorage().records.filter((r) => r.completed).length;
+}
+
+/** Consecutive calendar days (ending today) that contain a completed session. */
+export function currentDayStreak(): number {
+  const p = loadStorage();
+  const days = new Set(
+    p.records.filter((r) => r.completed).map((r) => new Date(r.ts).toDateString())
+  );
   let streak = 0;
   const cursor = new Date();
-  while (true) {
-    if (dates.has(cursor.toDateString())) {
-      streak++;
-      cursor.setTime(cursor.getTime() - DAY);
-    } else {
-      break;
-    }
+  while (days.has(cursor.toDateString())) {
+    streak++;
+    cursor.setTime(cursor.getTime() - 24 * 60 * 60 * 1000);
   }
   return streak;
 }
 
-export function leaderboard(gameId: string, limit = 10): { label: string; score: number }[] {
-  const p = load();
-  return p.entries
-    .filter((e) => e.gameId === gameId)
-    .sort((a, b) => b.score - a.score)
+/** Average perceived-vs-actual wait ratio across sessions with a felt value. */
+export function perceivedWaitStats(): { samples: number; avgRatio: number } {
+  const p = loadStorage();
+  const felt = p.records.filter((r) => typeof r.feltWaitMs === "number" && r.actualWaitMs > 0);
+  if (felt.length === 0) return { samples: 0, avgRatio: 0 };
+  const sumRatio = felt.reduce((s, r) => s + (r.feltWaitMs ?? 0) / r.actualWaitMs, 0);
+  return { samples: felt.length, avgRatio: sumRatio / felt.length };
+}
+
+export function leaderboard(gameId: string, limit = 10): { score: number; ts: number }[] {
+  const p = loadStorage();
+  return p.records
+    .filter((r) => r.gameId === gameId && r.completed && typeof r.score === "number")
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .slice(0, limit)
-    .map((e) => ({ label: e.label, score: e.score }));
+    .map((r) => ({ score: r.score!, ts: r.ts }));
 }
 
 export function resetAll(): void {
+  sessionStreakCounter = 0;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
