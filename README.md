@@ -1,8 +1,17 @@
-# QuickSpin
+<p align="center">
+  <img
+    src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2096'%3E%3Cdefs%3E%3ClinearGradient%20id='q'%20x1='0'%20y1='1'%20x2='1'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%238b7cff'/%3E%3Cstop%20offset='1'%20stop-color='%23ffe06a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle%20cx='48'%20cy='48'%20r='34'%20fill='none'%20stroke='%23c9cede'%20stroke-width='7.5'%20opacity='0.55'/%3E%3Cpath%20d='M%2077.4%2031%20A%2034%2034%200%201%201%2065%2077.4'%20fill='none'%20stroke='url(%23q)'%20stroke-width='7.5'%20stroke-linecap='round'/%3E%3Ccircle%20cx='77.4'%20cy='31'%20r='6.5'%20fill='%23ffe06a'/%3E%3Ccircle%20cx='48'%20cy='48'%20r='10'%20fill='none'%20stroke='%238b7cff'%20stroke-width='5'%20stroke-linecap='round'/%3E%3C/svg%3E"
+    width="64"
+    height="64"
+    alt="QuickSpin logo"
+    style="vertical-align: middle; margin-right: 16px"
+  />
+  <span style="font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; vertical-align: middle">QuickSpin</span>
+</p>
 
-> Turn AI wait time into play time — an embeddable wait-game SDK for any AI app.
+<p align="center">Turn AI wait time into play time — an embeddable wait-game SDK for any AI app.</p>
 
-Built for the **Commonsmade "Make Waiting for AI Fun" build challenge**.
+<p align="center">Built for the <b>Commonsmade "Make Waiting for AI Fun" build challenge</b>.</p>
 
 The seconds that vanish on a "thinking…" spinner are the weakest moment in every AI product.
 QuickSpin swaps that dead wait for a playable arcade inside a drop-in widget: your users play
