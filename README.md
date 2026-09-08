@@ -8,10 +8,10 @@ QuickSpin turns the dead seconds while a thinking model reasons, drafts, or gene
 playable arcade. Models like o1/Claude reasoning can stall for 10–60s+; that's dead time where
 users churn. QuickSpin makes it fun — and gives the host app a real, monetizable surface.
 
-- **⚡ Demo** — the fake "AI client" on the left drives the live widget on the right. Click **Run a fake AI wait**.
-- **🔁 Repeatability loop** — streaks, best scores, total wait→play time, per-game leaderboard (all local, `localStorage`).
-- **💰 Vault-ready monetization** — Free/Pro plans + simulated checkout, `$20k + 80% revenue` story.
-- **🧩 Drop-in embed** — 3 lines in any AI app, no rewiring of your model call.
+- **Demo** — the fake "AI client" on the left drives the live widget on the right. Click **Run a fake AI wait**.
+- **Repeatability loop** — streaks, best scores, total wait→play time, per-game leaderboard (all local, `localStorage`).
+- **Vault-ready monetization** — Free/Pro plans + simulated checkout, `$20k + 80% revenue` story.
+- **Drop-in embed** — 3 lines in any AI app, no rewiring of your model call.
 
 ---
 
