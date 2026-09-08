@@ -94,7 +94,9 @@ export function createWaitingWidget(opts: WidgetOptions = {}): WaitingController
     }
     const data = document.querySelector("[data-waiting-widget]");
     if (data instanceof HTMLElement) return data;
-    throw new Error("No valid widget target found. Pass a selector/element or add [data-waiting-widget].");
+    throw new Error(
+      "No valid widget target found. Pass a selector/element or add [data-waiting-widget]."
+    );
   }
 
   function updateStreak(): void {
@@ -204,12 +206,10 @@ export function createWaitingWidget(opts: WidgetOptions = {}): WaitingController
 
     const switchWrap = document.createElement("div");
     switchWrap.className = "wfun-switch";
-    switchWrap.innerHTML = GAME_IDS
-      .map(
-        (id) =>
-          `<button type="button" class="wfun-gamebtn" data-gameid="${id}">${GAMES[id as keyof typeof GAMES].name}</button>`
-      )
-      .join("");
+    switchWrap.innerHTML = GAME_IDS.map(
+      (id) =>
+        `<button type="button" class="wfun-gamebtn" data-gameid="${id}">${GAMES[id as keyof typeof GAMES].name}</button>`
+    ).join("");
     switchWrap.querySelectorAll(".wfun-gamebtn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-gameid") as string;

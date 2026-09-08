@@ -31,14 +31,14 @@ npm run preview    # serve the production bundle
 
 ## The product
 
-| Layer | Files | What it is |
-|---|---|---|
-| **SDK** | `src/sdk/` | The embeddable widget — the actual product |
-| **Games** | `src/sdk/runner.ts`, `src/sdk/fish.ts` | Canvas games (Wait Runner, Fish Rush) |
-| **Widget chassis** | `src/sdk/widget.ts` | 60fps loop, progress bar, status, streak, game switcher, upgrade button |
-| **Repeatability** | `src/sdk/persistence.ts` | Streaks, best scores, total wait→play time, leaderboard |
-| **Monetization** | `src/sdk/paywall.ts` | Free/Pro plans + simulated checkout flow |
-| **Demo host** | `src/demo/` | Marketing/pitch page + fake AI client driving the widget |
+| Layer              | Files                                  | What it is                                                              |
+| ------------------ | -------------------------------------- | ----------------------------------------------------------------------- |
+| **SDK**            | `src/sdk/`                             | The embeddable widget — the actual product                              |
+| **Games**          | `src/sdk/runner.ts`, `src/sdk/fish.ts` | Canvas games (Wait Runner, Fish Rush)                                   |
+| **Widget chassis** | `src/sdk/widget.ts`                    | 60fps loop, progress bar, status, streak, game switcher, upgrade button |
+| **Repeatability**  | `src/sdk/persistence.ts`               | Streaks, best scores, total wait→play time, leaderboard                 |
+| **Monetization**   | `src/sdk/paywall.ts`                   | Free/Pro plans + simulated checkout flow                                |
+| **Demo host**      | `src/demo/`                            | Marketing/pitch page + fake AI client driving the widget                |
 
 ## Integrating into a real AI app
 
@@ -61,7 +61,8 @@ Headerless drop-in for a plain `<script>` page:
 
 ```html
 <div data-waiting-widget></div>
-<script type="module" src="/path/to/quickspin.js"></script>  <!-- auto-inits -->
+<script type="module" src="/path/to/quickspin.js"></script>
+<!-- auto-inits -->
 ```
 
 ### Controller API
@@ -122,7 +123,7 @@ theme — and the winning play we architected against the five public rubric cri
 the AI waiting window genuinely enjoyable, repeatable, and monetizable.
 
 **Why a widget instead of one game?** Repeatability. A single novelty game scores poorly on the
-rubric's repeatability criterion. A drop-in layer tied to *every* wait in *every* AI app keeps the
+rubric's repeatability criterion. A drop-in layer tied to _every_ wait in _every_ AI app keeps the
 user coming back dozens of times a day — and it's the layer with the Vault-revenue story.
 
 ## License

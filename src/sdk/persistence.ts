@@ -43,7 +43,12 @@ export function isPaused(): boolean {
   return _paused;
 }
 
-export function recordResult(gameId: string, score: number, label: string, waitedMs: number): {
+export function recordResult(
+  gameId: string,
+  score: number,
+  label: string,
+  waitedMs: number
+): {
   isHighScore: boolean;
   streak: number;
 } {
@@ -76,9 +81,7 @@ export function bestScore(gameId: string): number {
 
 export function bestLabel(gameId: string): string | null {
   const p = load();
-  const best = p.entries
-    .filter((e) => e.gameId === gameId)
-    .sort((a, b) => b.score - a.score)[0];
+  const best = p.entries.filter((e) => e.gameId === gameId).sort((a, b) => b.score - a.score)[0];
   return best ? best.label : null;
 }
 
@@ -95,9 +98,7 @@ export function currentStreak(): number {
   const p = load();
   if (p.entries.length === 0) return 0;
   const DAY = 24 * 60 * 60 * 1000;
-  const dates = new Set(
-    p.entries.map((e) => new Date(e.ts).toDateString())
-  );
+  const dates = new Set(p.entries.map((e) => new Date(e.ts).toDateString()));
   // Count consecutive trailing days (today included).
   const today = new Date().toDateString();
   if (!dates.has(today)) return 0;

@@ -88,10 +88,22 @@ export const fishGame: GameDefinition = {
 
       s.fishX += s.fishVX * dt;
       s.fishY += s.fishVY * dt;
-      if (s.fishX < 14) { s.fishX = 14; s.fishVX = Math.abs(s.fishVX); }
-      if (s.fishX > w - 14) { s.fishX = w - 14; s.fishVX = -Math.abs(s.fishVX); }
-      if (s.fishY < 14) { s.fishY = 14; s.fishVY = Math.abs(s.fishVY); }
-      if (s.fishY > h - 14) { s.fishY = h - 14; s.fishVY = -Math.abs(s.fishVY); }
+      if (s.fishX < 14) {
+        s.fishX = 14;
+        s.fishVX = Math.abs(s.fishVX);
+      }
+      if (s.fishX > w - 14) {
+        s.fishX = w - 14;
+        s.fishVX = -Math.abs(s.fishVX);
+      }
+      if (s.fishY < 14) {
+        s.fishY = 14;
+        s.fishVY = Math.abs(s.fishVY);
+      }
+      if (s.fishY > h - 14) {
+        s.fishY = h - 14;
+        s.fishVY = -Math.abs(s.fishVY);
+      }
 
       draw(w, h);
     };
@@ -101,7 +113,7 @@ export const fishGame: GameDefinition = {
       const accuracy = acc > 0 ? s.caught / acc : 0;
       const score = Math.round(s.caught * 1000 * (0.4 + accuracy * 0.6));
       const notes: string[] = [];
-      notes.push(`${s.caught} caught · ${accuracy * 100 | 0}% accuracy`);
+      notes.push(`${s.caught} caught · ${(accuracy * 100) | 0}% accuracy`);
       if (s.caught >= 3) notes.push("Sharp reflexes, nice.");
       return { score, label: `${score} pts`, notes };
     };

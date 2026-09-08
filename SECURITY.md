@@ -4,9 +4,9 @@
 
 This project is currently a hackathon prototype. Only the latest commit on `main` is supported.
 
-| Version | Supported |
-|---|---|
-| main (latest) | ✅ |
+| Version       | Supported |
+| ------------- | --------- |
+| main (latest) | ✅        |
 
 ## Reporting a vulnerability
 

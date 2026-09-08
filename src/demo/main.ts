@@ -34,7 +34,11 @@ function buildPage(): HTMLElement {
     )
   );
   hero.appendChild(
-    el("p", "sub", `Live demo below. Play while the fake model “thinks,” then watch the streak build.`)
+    el(
+      "p",
+      "sub",
+      `Live demo below. Play while the fake model “thinks,” then watch the streak build.`
+    )
   );
   const badges = el("div", "badges");
   badges.innerHTML = `

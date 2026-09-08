@@ -35,7 +35,12 @@ export const PLANS: PlanOption[] = [
     name: "Pro",
     priceUsd: 9,
     cadence: "/mo",
-    features: ["Unlimited waits", "All games + custom themes", "Streak & revenue insights", "Remove 'powered by'"],
+    features: [
+      "Unlimited waits",
+      "All games + custom themes",
+      "Streak & revenue insights",
+      "Remove 'powered by'",
+    ],
     highlighted: true,
   },
 ];
@@ -109,7 +114,8 @@ export function createCheckoutFlow(onCheckout: (plan: string) => void | Promise<
     }
 
     const foot = document.createElement("div");
-    foot.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:6px;color:#7d7d8a;font-size:11px;";
+    foot.style.cssText =
+      "display:flex;align-items:center;gap:8px;margin-top:6px;color:#7d7d8a;font-size:11px;";
     foot.innerHTML = "⚡ Simulated checkout — swap in Stripe for production.";
     card.appendChild(foot);
 

@@ -164,7 +164,11 @@ export const runnerGame: GameDefinition = {
       // Speed indicator tied to AI progress.
       ctx.font = "10px system-ui, sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.fillText("▲ jump / tap  ·  speed " + (1 + host.progress * 2.2).toFixed(1) + "x", 8, h - 8);
+      ctx.fillText(
+        "▲ jump / tap  ·  speed " + (1 + host.progress * 2.2).toFixed(1) + "x",
+        8,
+        h - 8
+      );
     };
 
     return {

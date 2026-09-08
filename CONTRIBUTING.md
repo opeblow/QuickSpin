@@ -13,7 +13,7 @@ This is a hackathon prototype, but treat it like production code:
   `create(host): GameInstance`. It gets a canvas, a `progress` getter, a `status` getter, and a
   `finish(result)` callback. Nothing else.
 - **The engine never waits for the AI.** Fast loops (games, animations) must never block on the
-  model call. The AI telemetry is *state*, not a dependency.
+  model call. The AI telemetry is _state_, not a dependency.
 
 ## Getting started
 
