@@ -1,34 +1,88 @@
-/**
- * Public entry for the "Make Waiting for AI Fun" SDK.
- *
- * Usage (host app):
- *   import { makeItFun } from "./sdk";
- *   const ctrl = makeItFun({ gameId: "runner", onCheckout: (plan) => myStripe.checkout(plan) });
- *   // Wherever your model call is:
- *   ...
- *   ctrl.progress(0.1, "Reasoning…");
- *   ctrl.progress(0.6, "Drafting…");
- *   ctrl.done();
- */
-export { createWaitingWidget as makeItFun, GAMES, GAME_IDS } from "./widget";
-import { createWaitingWidget } from "./widget";
-export type * from "./types";
-export { PLANS, createCheckoutFlow } from "./paywall";
-export { leaderboard, bestScore, totalWaitedSeconds, resetAll } from "./persistence";
+import { createQuickSpin } from "./widget";
+export { createQuickSpin } from "./widget";
+export { SessionStateMachine } from "./state-machine";
+export {
+  bestScore,
+  bestLabel,
+  completedSessions,
+  currentDayStreak,
+  leaderboard,
+  perceivedWaitStats,
+  recordSession,
+  resetAll,
+  totalSessions,
+  totalWaitTurnedToPlayMs,
+} from "./persistence";
+export {
+  createRunnerSurface,
+  runnerCollides,
+  runnerGame,
+  runnerJump,
+  runnerResult,
+  runnerStep,
+} from "./runner";
+export { createOrbitSurface, orbitGame, orbitResult, orbitStep, orbitTap } from "./orbit";
+export { PLANS } from "./paywall";
+export type {
+  CheckoutResult,
+  CreateQuickSpinOptions,
+  EndReason,
+  GameDefinition,
+  GameHost,
+  GameId,
+  GameInstance,
+  GameResult,
+  PlanOption,
+  QuickSpinController,
+  SessionStatus,
+  ThemeConfig,
+  WaitEvent,
+  WaitEventHandler,
+  WaitMetrics,
+  WaitSession,
+} from "./types";
+export { GAME_NAME_IDS } from "./types";
 
-/**
- * Drop-in auto-init for websites that just add a `data-waiting-widget` element
- * and a tiny script — no build step (see /public/embed.js for the bundled
- * version).
- */
-export function autoInit(): void {
-  const root = document.querySelector("[data-waiting-widget]");
-  if (root && !root.hasAttribute("data-waiting-active")) {
-    createWaitingWidget({ target: root as HTMLElement, onProgress: () => undefined });
-    root.setAttribute("data-waiting-active", "true");
+function domReady(cb: () => void): void {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", cb, { once: true });
+  } else {
+    cb();
+  }
+}
+
+/** Mount a QuickSpin instance on every `[data-quickspin]` element. */
+export function autoInit(): () => void {
+  const controllers: Array<{ destroy(): void }> = [];
+  domReady(() => {
+    const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-quickspin]"));
+    for (const el of targets) {
+      try {
+        const controller = createQuickSpin({ target: el });
+        controllers.push(controller);
+      } catch {
+        /* invalid markup, skip that node */
+      }
+    }
+  });
+  return () => {
+    for (const c of controllers) c.destroy();
+    controllers.length = 0;
+  };
+}
+
+declare global {
+  interface Window {
+    QuickSpin?: {
+      createQuickSpin: typeof createQuickSpin;
+      autoInit: typeof autoInit;
+    };
   }
 }
 
 if (typeof window !== "undefined") {
-  (window as unknown as { makeWaitingFun?: typeof autoInit }).makeWaitingFun = autoInit;
+  (window as Window & { QuickSpin?: unknown }).QuickSpin = {
+    createQuickSpin,
+    autoInit,
+  };
 }

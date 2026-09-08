@@ -1,305 +1,671 @@
 import type {
+  CreateQuickSpinOptions,
+  EndReason,
   GameDefinition,
   GameHost,
   GameInstance,
   GameResult,
-  WaitingController,
-  WidgetOptions,
+  QuickSpinController,
+  ThemeConfig,
+  WaitEvent,
+  WaitSession,
 } from "./types";
+import { SessionStateMachine } from "./state-machine";
+import { WIDGET_CSS } from "./styles";
 import { runnerGame } from "./runner";
-import { fishGame } from "./fish";
-import {
-  bestLabel,
-  currentStreak,
-  recordResult,
-  totalSessions,
-  totalWaitedSeconds,
-} from "./persistence";
-import { createCheckoutFlow, PLANS } from "./paywall";
+import { orbitGame } from "./orbit";
+import { bestLabel, recordSession, totalSessions, totalWaitTurnedToPlayMs } from "./persistence";
 
-export const GAMES: Record<string, GameDefinition> = {
-  [runnerGame.id]: runnerGame,
-  [fishGame.id]: fishGame,
+const GAMES: Record<string, GameDefinition> = {
+  runner: runnerGame,
+  orbit: orbitGame,
 };
 
-export const GAME_IDS = Object.keys(GAMES);
+const DARK_THEME: Required<ThemeConfig> = {
+  mode: "dark",
+  primary: "#8b7cff",
+  surface: "#10111a",
+  elevated: "#181a27",
+  game: "#202334",
+  text: "#f8f9fc",
+  muted: "#a9b0c0",
+  border: "rgba(255,255,255,0.1)",
+  success: "#16a36a",
+  radius: "16px",
+  font: 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif',
+};
 
-export function createWaitingWidget(opts: WidgetOptions = {}): WaitingController {
+const LIGHT_THEME: Required<ThemeConfig> = {
+  mode: "light",
+  primary: "#6658e8",
+  surface: "#ffffff",
+  elevated: "#f3f4f8",
+  game: "#eef0f6",
+  text: "#17181d",
+  muted: "#68707f",
+  border: "rgba(16,17,26,0.1)",
+  success: "#16a36a",
+  radius: "16px",
+  font: 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif',
+};
+
+function resolveTarget(target?: string | HTMLElement): HTMLElement {
+  if (target instanceof HTMLElement) return target;
+  if (typeof target === "string") {
+    const el = document.querySelector(target);
+    if (el instanceof HTMLElement) return el;
+  }
+  throw new Error("QuickSpin: no target element found. Pass a selector or element.");
+}
+
+function formatWait(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return `${total}s`;
+}
+
+export function createQuickSpin(opts: CreateQuickSpinOptions = {}): QuickSpinController {
   const target = resolveTarget(opts.target);
-  const theme = opts.theme === "light" ? "light" : "dark";
-  const onCheckout = opts.onCheckout;
+  let gameId = GAMES[opts.game ?? ""] ? opts.game! : "runner";
 
-  let progress = 0;
-  let status = "Thinking…";
-  let visible = !opts.onProgress; // auto-hide if host drives progress
-  let currentGame: GameInstance | null = null;
-  let currentGameId: string | null = null;
-  let startedMillis = 0;
-  let paused = false;
-  let destroyed = false;
+  const hostEl = document.createElement("div");
+  const shadow = hostEl.attachShadow({ mode: "open" });
+  const styleEl = document.createElement("style");
+  styleEl.textContent = WIDGET_CSS;
+  shadow.appendChild(styleEl);
 
   const root = document.createElement("div");
-  root.className = `wfun-root wfun-${theme}`;
+  root.className = "quickspin-root";
 
+  // Header
   const header = document.createElement("div");
-  header.className = "wfun-header";
-
+  header.className = "quickspin-header";
+  const brand = document.createElement("div");
+  brand.className = "quickspin-brand";
+  const dot = document.createElement("span");
+  dot.className = "quickspin-dot";
+  brand.appendChild(dot);
+  brand.appendChild(document.createTextNode("QuickSpin"));
   const statusEl = document.createElement("div");
-  statusEl.className = "wfun-status";
-  statusEl.textContent = status;
+  statusEl.className = "quickspin-status";
+  statusEl.setAttribute("role", "status");
+  statusEl.setAttribute("aria-live", "polite");
+  statusEl.textContent = "Waiting for the model…";
+  const elapsedEl = document.createElement("div");
+  elapsedEl.className = "quickspin-elapsed";
+  elapsedEl.textContent = "0s";
+  const tools = document.createElement("div");
+  tools.className = "quickspin-tools";
+  const minimizeBtn = document.createElement("button");
+  minimizeBtn.className = "quickspin-btn";
+  minimizeBtn.type = "button";
+  minimizeBtn.textContent = "—";
+  minimizeBtn.title = "Hide the widget (game pauses)";
+  tools.appendChild(minimizeBtn);
+  header.appendChild(brand);
+  header.appendChild(statusEl);
+  header.appendChild(elapsedEl);
+  header.appendChild(tools);
 
-  const streakEl = document.createElement("div");
-  streakEl.className = "wfun-streak";
+  // Game switcher
+  const gamesRow = document.createElement("div");
+  gamesRow.className = "quickspin-games";
+  const gameBtns: HTMLButtonElement[] = [];
+  for (const id of Object.keys(GAMES)) {
+    const b = document.createElement("button");
+    b.className = "quickspin-gamebtn";
+    b.type = "button";
+    b.textContent = GAMES[id].name;
+    b.setAttribute("aria-pressed", gameId === id ? "true" : "false");
+    b.addEventListener("click", () => setGame(id));
+    gameBtns.push(b);
+    gamesRow.appendChild(b);
+  }
 
-  const body = document.createElement("div");
-  body.className = "wfun-body";
-
+  // Stage: canvas + result/wait overlay
+  const stage = document.createElement("div");
+  stage.className = "quickspin-stage";
   const canvas = document.createElement("canvas");
-  canvas.className = "wfun-canvas";
+  canvas.className = "quickspin-canvas";
+  canvas.width = 480;
+  canvas.height = 220;
+  const overlay = document.createElement("div");
+  overlay.className = "quickspin-overlay";
+  overlay.hidden = true;
+  stage.appendChild(canvas);
+  stage.appendChild(overlay);
 
+  // Footer
+  const footer = document.createElement("div");
+  footer.className = "quickspin-footer";
+  const controlsEl = document.createElement("span");
+  controlsEl.textContent = GAMES[gameId].controls;
+  const bestEl = document.createElement("span");
+  bestEl.textContent = "";
+  footer.appendChild(controlsEl);
+  footer.appendChild(bestEl);
+
+  // Progress bar
   const progressBar = document.createElement("div");
-  progressBar.className = "wfun-progress";
+  progressBar.className = "quickspin-progress";
   const progressFill = document.createElement("div");
-  progressFill.className = "wfun-progress-fill";
+  progressFill.className = "quickspin-progress-fill";
   progressBar.appendChild(progressFill);
 
-  const footer = document.createElement("div");
-  footer.className = "wfun-footer";
+  root.appendChild(header);
+  root.appendChild(gamesRow);
+  root.appendChild(stage);
+  root.appendChild(progressBar);
+  root.appendChild(footer);
+  shadow.appendChild(root);
+  target.appendChild(hostEl);
+  target.setAttribute("data-quickspin-active", "true");
 
-  const statsEl = document.createElement("div");
-  statsEl.className = "wfun-stats";
+  // ---- theme ----
+  let theme: ThemeConfig = opts.theme ?? DARK_THEME;
 
-  const upgradeBtn = document.createElement("button");
-  upgradeBtn.className = "wfun-upgrade";
-  upgradeBtn.type = "button";
-  upgradeBtn.textContent = "Upgrade the wait";
+  function applyTheme(t: ThemeConfig): void {
+    theme = t;
+    const base = (t.mode === "light" ? LIGHT_THEME : DARK_THEME) as Required<ThemeConfig>;
+    const m = { ...base, ...t } as Required<ThemeConfig>;
+    hostEl.style.setProperty("--qs-primary", m.primary);
+    hostEl.style.setProperty("--qs-surface", m.surface);
+    hostEl.style.setProperty("--qs-elevated", m.elevated);
+    hostEl.style.setProperty("--qs-game", m.game);
+    hostEl.style.setProperty("--qs-text", m.text);
+    hostEl.style.setProperty("--qs-muted", m.muted);
+    hostEl.style.setProperty("--qs-border", m.border);
+    hostEl.style.setProperty("--qs-success", m.success);
+    hostEl.style.setProperty("--qs-radius", m.radius);
+    hostEl.style.setProperty("--qs-font", m.font);
+  }
+  applyTheme(theme);
 
-  const checkout = createCheckoutFlow(handleCheckout);
+  // ---- state ----
+  let currentGame: GameInstance | null = null;
+  let sessionActive = false;
+  let startedAt = 0;
+  let engagedMs = 0;
+  let lastTs = 0;
+  let raf = 0;
+  let visible = true;
+  let destroyed = false;
+  const machine = new SessionStateMachine(emit);
 
-  function handleCheckout(plan: string): void {
-    if (onCheckout) {
-      void onCheckout(plan);
-    } else {
-      // Default: surface the fact in the UI so the "revenue" story is visible.
-      const p = PLANS.find((x) => x.id === plan);
-      if (p && p.priceUsd > 0) statusEl.textContent = `✓ Pro active — the wait pays.`;
+  let externalHandler: ((e: WaitEvent) => void) | null = null;
+
+  function emit(e: WaitEvent): void {
+    if (opts.onEvent) opts.onEvent(e);
+    if (externalHandler) externalHandler(e);
+  }
+
+  // ---- single RAF owner: visibility-guarded, drives the active game ----
+  function loop(ts: number): void {
+    if (destroyed) return;
+    raf = requestAnimationFrame(loop);
+    const dt = lastTs ? (ts - lastTs) / 1000 : 0;
+    lastTs = ts;
+
+    if (sessionActive) {
+      elapsedEl.textContent = formatWait(ts - startedAt);
+      if (machine.progress == null) progressFill.classList.add("indeterminate");
+    }
+
+    if (sessionActive && currentGame && visible && !document.hidden) {
+      currentGame.tick(ts, dt);
+      engagedMs += dt * 1000;
+    } else if (currentGame) {
+      currentGame.pause();
     }
   }
 
-  function resolveTarget(t?: string | HTMLElement): HTMLElement {
-    if (t instanceof HTMLElement) return t;
-    if (typeof t === "string") {
-      const el = document.querySelector(t);
-      if (el instanceof HTMLElement) return el;
+  function setThemeState(id: string): void {
+    for (const b of gameBtns) {
+      b.setAttribute("aria-pressed", GAMES[id].name === b.textContent ? "true" : "false");
     }
-    const data = document.querySelector("[data-waiting-widget]");
-    if (data instanceof HTMLElement) return data;
-    throw new Error(
-      "No valid widget target found. Pass a selector/element or add [data-waiting-widget]."
-    );
+    controlsEl.textContent = GAMES[id].controls;
   }
 
-  function updateStreak(): void {
-    const streak = currentStreak();
-    streakEl.textContent = streak > 0 ? `🔥 ${streak}-day streak` : "Start your streak";
-  }
-
-  function updateStats(): void {
-    const secs = totalWaitedSeconds();
-    const sessions = totalSessions();
-    if (sessions === 0 && secs === 0) {
-      statsEl.textContent = "No waits logged yet — every AI wait is now a game.";
-    } else {
-      statsEl.textContent = `${sessions} sessions · ${secs}s of wait turned into play · streak ${currentStreak()}`;
+  function setGame(id: string): void {
+    if (!GAMES[id]) return;
+    const hadGame = currentGame != null;
+    const switching = id !== gameId;
+    gameId = id;
+    setThemeState(id);
+    const old = currentGame;
+    currentGame = null;
+    old?.destroy();
+    if (sessionActive) {
+      canvas.style.pointerEvents = "";
+      if (hadGame) {
+        overlay.hidden = true;
+        startGame();
+      } else if (!switching) {
+        // no running game (e.g. "Just wait"): leave the choose-screen alone
+      }
     }
+    updateBest();
   }
 
   function gameHost(): GameHost {
     return {
       canvas,
+      root,
       get progress() {
-        return progress;
+        return machine.progress;
       },
-      get status() {
-        return status;
+      finish(reason: EndReason): GameResult {
+        return onGameFinish(reason);
       },
-      finish(result: GameResult) {
-        finishGame(result);
+      elapsedMs() {
+        return sessionActive ? performance.now() - startedAt : 0;
       },
     };
   }
 
-  function startGame(id?: string): void {
-    if (destroyed) return;
-    stopCurrent();
-    const gameId = (id && GAMES[id] ? id : runnerGame.id) as string;
-    const game = GAMES[gameId];
-    if (!game) return;
-    currentGameId = gameId;
-    progress = progress > 0.98 ? 0 : progress;
-    currentGame = game.create(gameHost());
-    currentGame.start();
-    if (!paused) {
-      startedMillis = performance.now();
-    }
+  function onGameFinish(reason: EndReason): GameResult {
+    const game = currentGame;
+    if (!game) return { score: 0, label: "—", notes: [], reason };
+    const result = game.finish(reason);
+    if (reason === "player-failed") showCrashOverlay(result);
+    return result;
   }
 
-  function finishGame(result: GameResult): void {
-    const gameId = currentGameId || runnerGame.id;
-    const elapsed = Math.max(0, performance.now() - startedMillis);
-    const { isHighScore, streak } = recordResult(gameId, result.score, result.label, elapsed);
-    updateStreak();
-    updateStats();
-    const notes = [
-      ...result.notes,
-      isHighScore ? "New personal best!" : `Best: ${bestLabel(gameId) || "—"}`,
-      `Streak: ${streak}`,
-    ];
-    showFinishScreen(gameId, result, notes);
-    stopCurrent();
+  function startGame(): void {
+    const old = currentGame;
+    currentGame = null;
+    old?.destroy();
+    const g = GAMES[gameId].create(gameHost());
+    currentGame = g;
+    g.start();
+    emit({ type: "game-start", data: { game: gameId } });
   }
 
-  function showFinishScreen(gameId: string, result: GameResult, notes: string[]): void {
-    canvas.style.display = "none";
-    const screen = document.createElement("div");
-    screen.className = "wfun-finish";
-    screen.innerHTML = `
-      <div class="wfun-big">${result.score.toLocaleString()}</div>
-      <div class="wfun-sub">${result.label}</div>
-      <ul class="wfun-notes">${notes.map((n) => `<li>${n}</li>`).join("")}</ul>
-      <div class="wfun-actions"></div>
-    `;
-    const actions = screen.querySelector(".wfun-actions") as HTMLElement;
+  function focusFirstButton(): void {
+    const b = overlay.querySelector<HTMLButtonElement>("button");
+    b?.focus();
+  }
+
+  function begin(): void {
+    startGame();
+    overlay.hidden = true;
+    canvas.style.pointerEvents = "";
+    machine.transition("playing");
+  }
+
+  function showChooseScreen(status?: string): void {
+    statusEl.textContent = status ?? "Waiting for the model…";
+    overlay.hidden = false;
+    overlay.innerHTML = "";
+    canvas.style.pointerEvents = "none";
+
+    const label = document.createElement("div");
+    label.className = "quickspin-waiting-label";
+    label.textContent = "AI is working somewhere else…";
+
+    const actions = document.createElement("div");
+    actions.className = "quickspin-actions";
+    const play = document.createElement("button");
+    play.className = "quickspin-btn-primary";
+    play.type = "button";
+    play.textContent = "Play while you wait";
+    play.addEventListener("click", begin);
+    const waitBtn = document.createElement("button");
+    waitBtn.className = "quickspin-btn-ghost";
+    waitBtn.type = "button";
+    waitBtn.textContent = "Just wait";
+    waitBtn.addEventListener("click", () => {
+      overlay.hidden = true;
+      machine.transition("playing");
+    });
+    actions.appendChild(play);
+    actions.appendChild(waitBtn);
+
+    overlay.appendChild(label);
+    overlay.appendChild(actions);
+  }
+
+  function completeSession(): void {
+    if (!sessionActive) return;
+    sessionActive = false;
+    let result: GameResult | null = null;
+    if (currentGame) result = currentGame.finish("ai-complete");
+    machine.transition("response-ready");
+    machine.transition("completed");
+    const actualWaitMs = performance.now() - startedAt;
+    const rec = recordSession({
+      gameId,
+      score: result?.score ?? null,
+      actualWaitMs,
+      engagedPlayMs: engagedMs,
+      feltWaitMs: null,
+      completed: true,
+    });
+    emit({
+      type: "session-complete",
+      data: {
+        game: gameId,
+        score: result?.score ?? null,
+        actualWaitMs,
+        engagedMs,
+        dayStreak: rec.dayStreak,
+        sessionStreak: rec.sessionStreak,
+      },
+    });
+    showResponseOverlay(result, actualWaitMs, rec.isHighScore, rec.dayStreak, rec.sessionStreak);
+    destroyGame();
+  }
+
+  function cancelSession(): void {
+    if (!sessionActive) return;
+    sessionActive = false;
+    machine.transition("cancelled");
+    recordSession({
+      gameId,
+      score: null,
+      actualWaitMs: performance.now() - startedAt,
+      engagedPlayMs: engagedMs,
+      feltWaitMs: null,
+      completed: false,
+    });
+    emit({ type: "cancel", data: { game: gameId } });
+    showCancelledOverlay();
+    destroyGame();
+  }
+
+  function failSession(error?: unknown): void {
+    if (!sessionActive) return;
+    sessionActive = false;
+    machine.transition("failed");
+    recordSession({
+      gameId,
+      score: null,
+      actualWaitMs: performance.now() - startedAt,
+      engagedPlayMs: engagedMs,
+      feltWaitMs: null,
+      completed: false,
+    });
+    emit({ type: "fail", data: { error } });
+    showErrorOverlay(error);
+    destroyGame();
+  }
+
+  function destroyGame(): void {
+    const old = currentGame;
+    currentGame = null;
+    old?.destroy();
+  }
+
+  function showCrashOverlay(result: GameResult): void {
+    overlay.hidden = false;
+    overlay.innerHTML = "";
+    const label = document.createElement("div");
+    label.className = "quickspin-label";
+    label.textContent = "Crash! The model is still working.";
+    const score = document.createElement("div");
+    score.className = "quickspin-score-big";
+    score.textContent = result.label;
+    const actions = document.createElement("div");
+    actions.className = "quickspin-actions";
     const replay = document.createElement("button");
+    replay.className = "quickspin-btn-primary";
     replay.type = "button";
-    replay.className = "wfun-replay";
     replay.textContent = "Play again";
-    replay.addEventListener("click", () => {
-      screen.remove();
-      canvas.style.display = "block";
-      startGame(gameId);
+    replay.addEventListener("click", begin);
+    const wait = document.createElement("button");
+    wait.className = "quickspin-btn-ghost";
+    wait.type = "button";
+    wait.textContent = "Keep waiting";
+    wait.addEventListener("click", () => {
+      overlay.hidden = true;
     });
-    const close = document.createElement("button");
-    close.type = "button";
-    close.className = "wfun-dismiss";
-    close.textContent = "Done";
-    close.addEventListener("click", () => {
-      screen.remove();
-      canvas.style.display = "block";
-    });
-    actions.append(replay, close);
-    body.appendChild(screen);
+    actions.appendChild(replay);
+    actions.appendChild(wait);
+    overlay.appendChild(label);
+    overlay.appendChild(score);
+    overlay.appendChild(actions);
+    focusFirstButton();
   }
 
-  function stopCurrent(): void {
-    if (currentGame) {
-      currentGame.destroy();
-      currentGame = null;
+  function showResponseOverlay(
+    result: GameResult | null,
+    actualWaitMs: number,
+    isHigh: boolean,
+    dayStreak: number,
+    sessionStreak: number
+  ): void {
+    overlay.hidden = false;
+    overlay.innerHTML = "";
+    const title = document.createElement("div");
+    title.className = "quickspin-label";
+    title.textContent = "Response ready";
+    const score = document.createElement("div");
+    score.className = "quickspin-score-big";
+    score.textContent = result ? result.label : "—";
+    const notes = document.createElement("ul");
+    notes.className = "quickspin-notes";
+    const items: string[] = [];
+    if (result?.notes) items.push(...result.notes);
+    if (isHigh) items.push("New personal best");
+    items.push(`Streaks — days ${dayStreak} · sessions ${sessionStreak}`);
+    for (const n of items) {
+      const li = document.createElement("li");
+      li.textContent = n;
+      notes.appendChild(li);
     }
-  }
+    overlay.appendChild(title);
+    overlay.appendChild(score);
+    overlay.appendChild(notes);
 
-  function build(): void {
-    header.innerHTML = "";
-    root.innerHTML = "";
-    header.appendChild(statusEl);
-    header.appendChild(streakEl);
-
-    const switchWrap = document.createElement("div");
-    switchWrap.className = "wfun-switch";
-    switchWrap.innerHTML = GAME_IDS.map(
-      (id) =>
-        `<button type="button" class="wfun-gamebtn" data-gameid="${id}">${GAMES[id as keyof typeof GAMES].name}</button>`
-    ).join("");
-    switchWrap.querySelectorAll(".wfun-gamebtn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-gameid") as string;
-        startGame(id);
-        if (GAMES[id as keyof typeof GAMES]) {
-          statusEl.textContent = status;
-        }
+    const ok = (feltMs: number): void => {
+      const reduction = Math.max(0, 1 - feltMs / Math.max(1, actualWaitMs));
+      emit({ type: "perceived-wait", data: { felt: feltMs, actual: actualWaitMs, reduction } });
+      overlay.innerHTML = "";
+      const redTitle = document.createElement("div");
+      redTitle.className = "quickspin-reduction";
+      redTitle.textContent = `QuickSpin cut the perceived wait by ${Math.round(reduction * 100)}% this session.`;
+      const done = document.createElement("button");
+      done.className = "quickspin-btn-primary";
+      done.type = "button";
+      done.textContent = "View response";
+      done.addEventListener("click", () => {
+        overlay.hidden = true;
       });
+      overlay.appendChild(redTitle);
+      overlay.appendChild(done);
+      done.focus();
+    };
+
+    const q = document.createElement("div");
+    q.className = "quickspin-label";
+    q.textContent = `That took ${formatWait(actualWaitMs)}. How long did it feel?`;
+    const feltWrap = document.createElement("div");
+    feltWrap.className = "quickspin-felt";
+    const opts2: Array<[string, number]> = [
+      ["Under 10s", 8000],
+      ["About 15s", 15000],
+      ["Over 20s", 22000],
+    ];
+    for (const [txt, ms] of opts2) {
+      const b = document.createElement("button");
+      b.className = "quickspin-felt-btn";
+      b.type = "button";
+      b.textContent = txt;
+      b.addEventListener("click", () => ok(ms));
+      feltWrap.appendChild(b);
+    }
+    overlay.appendChild(q);
+    overlay.appendChild(feltWrap);
+
+    const view = document.createElement("button");
+    view.className = "quickspin-btn-ghost";
+    view.type = "button";
+    view.textContent = "View response";
+    view.addEventListener("click", () => {
+      overlay.hidden = true;
     });
-
-    root.appendChild(header);
-    root.appendChild(switchWrap);
-    root.appendChild(body);
-    body.appendChild(canvas);
-    root.appendChild(progressBar);
-    root.appendChild(footer);
-    footer.appendChild(statsEl);
-    footer.appendChild(upgradeBtn);
-
-    const fin = document.createElement("div");
-    fin.className = "wfun-hint";
-    fin.textContent = "You play while the model works. The wait ends with the game.";
-    footer.appendChild(fin);
-
-    upgradeBtn.addEventListener("click", () => checkout.open());
-    updateStreak();
-    updateStats();
-    target.appendChild(root);
+    const actions = document.createElement("div");
+    actions.className = "quickspin-actions";
+    actions.appendChild(view);
+    overlay.appendChild(actions);
+    focusFirstButton();
   }
 
-  function setProgress(p: number, st?: string): void {
-    progress = Math.max(0, Math.min(1, p));
-    if (st) status = st;
-    statusEl.textContent = status;
-    progressFill.style.width = `${(progress * 100).toFixed(1)}%`;
-    if (progress >= 1) {
-      done();
+  function showCancelledOverlay(): void {
+    overlay.hidden = false;
+    overlay.innerHTML = "";
+    const label = document.createElement("div");
+    label.className = "quickspin-label";
+    label.textContent = "Wait cancelled.";
+    overlay.appendChild(label);
+  }
+
+  function showErrorOverlay(error?: unknown): void {
+    overlay.hidden = false;
+    overlay.innerHTML = "";
+    const label = document.createElement("div");
+    label.className = "quickspin-label";
+    label.textContent = "Something went wrong.";
+    if (error instanceof Error) label.textContent += ` ${error.message}`;
+    overlay.appendChild(label);
+  }
+
+  function updateBest(): void {
+    bestEl.textContent = bestLabel(gameId) ? `Best: ${bestLabel(gameId)}` : "";
+  }
+
+  function updateFooterStats(): void {
+    bestEl.textContent =
+      `${totalSessions()} sessions · ${formatWait(totalWaitTurnedToPlayMs())} of AI wait turned into play · ` +
+      (bestLabel(gameId) ? `Best: ${bestLabel(gameId)}` : "No best yet");
+  }
+
+  // ---- visibility ----
+  const onVisibility = (): void => {
+    if (document.hidden || !visible) currentGame?.pause();
+    else {
+      currentGame?.resume();
+      lastTs = 0;
     }
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+
+  function hide(): void {
+    visible = false;
+    hostEl.style.display = "none";
+    currentGame?.pause();
+  }
+  function show(): void {
+    visible = true;
+    hostEl.style.display = "";
+    currentGame?.resume();
+    lastTs = 0;
   }
 
-  function done(): void {
-    if (currentGame) {
-      // Let the game finish naturally with progress=1 → ruff.
-      const result: GameResult = {
-        score: Math.floor(400 + Math.random() * 400),
-        label: "Wait complete",
-        notes: [],
-      };
-      finishGame(result);
-    } else {
-      progressFill.style.width = "100%";
-      statusEl.textContent = "AI responded — the wait is over.";
-    }
+  minimizeBtn.addEventListener("click", () => {
+    if (visible) hide();
+    else show();
+  });
+
+  // If the host page hidden at load, the RAF still runs but tick is guarded.
+  raf = requestAnimationFrame(loop);
+  updateFooterStats();
+
+  function startSession(options?: { gameId?: string; status?: string }): WaitSession {
+    sessionActive = true;
+    startedAt = performance.now();
+    engagedMs = 0;
+    lastTs = 0;
+    progressFill.style.width = "0%";
+    progressFill.classList.remove("indeterminate");
+    elapsedEl.textContent = "0s";
+    const o = options ?? {};
+    const gid = o.gameId ?? gameId;
+    if (GAMES[gid]) setGameNoStart(gid);
+    showChooseScreen(o.status);
+    emit({ type: "session-start", data: { game: gameId } });
+    return session;
   }
 
-  function loop(): void {
-    if (destroyed) return;
-    if (paused || !visible) {
-      requestAnimationFrame(loop);
-      return;
-    }
-    // Live elapsed for the footer even when a game isn't active.
-    requestAnimationFrame(loop);
+  function setGameNoStart(id: string): void {
+    gameId = id;
+    setThemeState(id);
   }
 
-  build();
-  requestAnimationFrame(loop);
-
-  return {
-    progress(p, st) {
-      if (p < progress) {
-        // a new wait began
-        status = st || "Thinking…";
-        startGame();
-      }
-      setProgress(p, st);
+  const session: WaitSession = {
+    setPhase(phase: string) {
+      if (!sessionActive) return;
+      statusEl.textContent = phase;
+      emit({ type: "phase", data: { from: machine.status } });
     },
-    done,
-    show(v) {
-      visible = v;
-      root.style.display = v ? "block" : "none";
-    },
-    startGame,
-    destroy() {
-      destroyed = true;
-      stopCurrent();
-      checkout.destroy();
-      if (root.parentNode) {
-        root.parentNode.removeChild(root);
+    setProgress(value?: number) {
+      if (!sessionActive) return;
+      machine.setProgress(value);
+      if (value === undefined || Number.isNaN(value)) {
+        progressFill.classList.add("indeterminate");
+      } else {
+        progressFill.classList.remove("indeterminate");
+        progressFill.style.width = `${(Math.min(1, Math.max(0, value)) * 100).toFixed(1)}%`;
       }
+    },
+    complete() {
+      completeSession();
+    },
+    cancel() {
+      cancelSession();
+    },
+    fail(error?: unknown) {
+      failSession(error);
     },
   };
+
+  const controller: QuickSpinController = {
+    start(options) {
+      if (sessionActive) cancelSession();
+      return startSession(options);
+    },
+    async track<T>(
+      request: Promise<T>,
+      options?: { gameId?: string; status?: string }
+    ): Promise<T> {
+      const s = startSession(options);
+      try {
+        const val = await request;
+        s.complete();
+        return val;
+      } catch (err) {
+        s.fail(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      }
+    },
+    setTheme(t) {
+      applyTheme(t);
+    },
+    show() {
+      show();
+    },
+    hide() {
+      hide();
+    },
+    destroy() {
+      if (destroyed) return;
+      destroyed = true;
+      cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
+      destroyGame();
+      hostEl.remove();
+      if (target.hasAttribute("data-quickspin-active"))
+        target.removeAttribute("data-quickspin-active");
+    },
+    on(handler) {
+      externalHandler = handler;
+      return () => {
+        if (externalHandler === handler) externalHandler = null;
+      };
+    },
+    get status() {
+      return machine.status;
+    },
+  };
+
+  return controller;
 }
