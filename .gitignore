@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 dist/
+dist-demo/
+*.tgz
 
 # Env / secrets
 .env

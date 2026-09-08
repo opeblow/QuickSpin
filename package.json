@@ -1,7 +1,7 @@
 {
   "name": "quickspin",
-  "version": "1.0.0",
-  "description": "QuickSpin — make waiting for AI fun. A monetizable, embeddable wait-game SDK for any AI app, built for the Commonsmade 'Make Waiting for AI Fun' hackathon.",
+  "version": "0.1.0",
+  "description": "QuickSpin — turn AI wait time into play time. An embeddable wait-game SDK for any AI app, built for the Commonsmade 'Make Waiting for AI Fun' hackathon.",
   "author": "QuickSpin team",
   "license": "MIT",
   "repository": {
@@ -9,17 +9,56 @@
     "url": "https://github.com/opeblow/QuickSpin.git"
   },
   "type": "module",
+  "main": "./dist/quickspin.cjs",
+  "module": "./dist/quickspin.js",
+  "types": "./dist/types/sdk/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/sdk/index.d.ts",
+      "import": "./dist/quickspin.js",
+      "require": "./dist/quickspin.cjs"
+    },
+    "./react": {
+      "types": "./dist/types/react/QuickSpinWidget.d.ts",
+      "import": "./dist/quickspin-react.js",
+      "require": "./dist/quickspin-react.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
+    "build:sdk": "npm run build:sdk:bundles && npm run build:sdk:types",
+    "build:sdk:bundles": "vite build --config vite.config.lib.ts && vite build --config vite.config.iife.ts",
+    "build:sdk:types": "node -e \"require('fs').rmSync('dist/types',{recursive:true,force:true})\" && tsc -p tsconfig.lib.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json}\" \"*.{json,md}\" \".github/workflows/*.yml\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json}\" \"*.{json,md}\" \".github/workflows/*.yml\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json}\" \"*.{json,md}\" \".github/workflows/*.yml\"",
+    "check": "npm run typecheck && npm run format:check && npm run test && npm run build:sdk"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "prettier": "^3.9.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.5.4",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "vitest": "^2.1.9"
   }
 }
