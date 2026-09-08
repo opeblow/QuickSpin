@@ -1,6 +1,6 @@
 <p align="center">
   <img
-    src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2096'%3E%3Cdefs%3E%3ClinearGradient%20id='chip'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%238b7cff'/%3E%3Cstop%20offset='1'%20stop-color='%236658e8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x='6'%20y='6'%20width='84'%20height='84'%20rx='24'%20fill='url(%23chip)'/%3E%3Cpath%20d='M%2048%2020%20A%2028%2028%200%201%200%2048%2076%20A%2028%2028%200%201%200%2048%2020%20Z%20M%2048%2034%20A%2014%2014%200%201%201%2048%2062%20A%2014%2014%200%201%201%2048%2034%20Z'%20fill='%23ffffff'%20fill-rule='evenodd'/%3E%3Cpath%20d='M%2060%2062%20Q%2072%2068%2079%2084'%20fill='none'%20stroke='%23ffe06a'%20stroke-width='12'%20stroke-linecap='round'/%3E%3C/svg%3E"
+    src="assets/logo.svg"
     width="64"
     height="64"
     alt="QuickSpin logo"
