@@ -38,13 +38,25 @@ export function getLastCheckoutError(): string | null {
   return lastCheckoutError;
 }
 
+export interface CheckoutFlowOptions {
+  /** Stripe Payment Link URLs per paid plan id. When set, selecting that plan
+   *  opens a real Stripe checkout and can genuinely generate revenue. When
+   *  unset, the same flow renders the honest confirmed-result preview. */
+  paymentLinks?: Record<string, string>;
+}
+
 /** Build a small checkout surface. Success is only ever shown from the host's
- *  confirmed result — this preview never fabricates a payment. */
+ *  confirmed result — the preview never fabricates a payment, and Stripe
+ *  redirects are real charges that land in the host's own dashboard. */
 export function createCheckoutFlow(
-  onCheckout: (planId: string) => Promise<{ ok: boolean; paymentId?: string } | CheckoutResult>
+  onCheckout: (planId: string) => Promise<{ ok: boolean; paymentId?: string } | CheckoutResult>,
+  opts: CheckoutFlowOptions = {}
 ): { open(): void; close(): void; destroy(): void } {
   let overlay: HTMLElement | null = null;
   let disposed = false;
+
+  const live = opts.paymentLinks;
+  const livePlans = PLANS.filter((p) => p.priceUsd > 0 && live?.[p.id]).map((p) => p.id);
 
   const build = (): HTMLElement => {
     const root = document.createElement("div");
@@ -70,8 +82,12 @@ export function createCheckoutFlow(
       `<strong id="qs-checkout-title" style="font-size:17px;">QuickSpin plans</strong>` +
       `<button class="qs-checkout-close" aria-label="Close" style="background:none;border:none;color:#a9b0c0;font-size:20px;cursor:pointer;line-height:1;">×</button></div>` +
       `<p style="margin:0 0 16px;color:#a9b0c0;font-size:12.5px;line-height:1.5;">` +
-      `<span style="background:rgba(229,72,77,0.15);color:#ff8f93;border-radius:6px;padding:2px 7px;font-weight:600;font-size:11px;">Checkout preview</span>` +
-      ` No real payment will be made in this demo. Success is only shown when a payment provider confirms it.</p>`;
+      (livePlans.length
+        ? `<span style="background:rgba(22,163,106,0.15);color:#35d693;border-radius:6px;padding:2px 7px;font-weight:600;font-size:11px;">Stripe · real payment</span>` +
+          ` Selecting a live plan opens a real Stripe Payment Link. The result lives in your Stripe dashboard — QuickSpin never claims a payment it can't verify.`
+        : `<span style="background:rgba(229,72,77,0.15);color:#ff8f93;border-radius:6px;padding:2px 7px;font-weight:600;font-size:11px;">Checkout preview</span>` +
+          ` No real payment is made in this demo. Success is only shown when a payment provider confirms it.`) +
+      `</p>`;
 
     for (const plan of PLANS) {
       const row = document.createElement("div");
@@ -117,6 +133,14 @@ export function createCheckoutFlow(
     };
 
     const select = async (plan: PlanOption): Promise<void> => {
+      const link = plan.priceUsd > 0 ? live?.[plan.id] : undefined;
+      if (link) {
+        statusEl.textContent = "Opening Stripe checkout…";
+        await new Promise((r) => setTimeout(r, 300));
+        if (disposed || !overlay) return;
+        window.location.assign(link);
+        return;
+      }
       statusEl.textContent = "Processing…";
       try {
         const result = await onCheckout(plan.id);

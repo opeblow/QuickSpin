@@ -108,10 +108,27 @@ import { QuickSpinWidget } from "quickspin/react";
 - Keyboard + pointer for every game, `role="status"` aria-live updates, focusable controls, and
   `prefers-reduced-motion` styles.
 
-## Pricing (checkout preview)
+## Pricing (real Stripe, or an honest preview)
 
 The pricing section lists **only features that exist today**; anything planned is labeled
 "after the hackathon". The widget itself never shows pricing — checkout lives on the host's page.
+
+Two ways a host charges:
+
+- **Live (generates real revenue):** pass a Stripe Payment Link per paid plan. Selecting the plan
+  opens Stripe, the charge lands in your dashboard, and revenue counts toward the Vault's
+  80%-of-revenue structure. QuickSpin never claims a payment it can't verify — Stripe is the
+  source of truth.
+
+  ```ts
+  const checkout = createCheckoutFlow(confirmResult, {
+    paymentLinks: { pro: "https://buy.stripe.com/…" }, // real charge
+  });
+  checkout.open();
+  ```
+
+- **Preview (no charge):** if you only pass the callback, the flow renders the confirmed-result
+  preview and never fabricates a payment.
 
 ```ts
 const checkout = createCheckoutFlow(async (planId) => {
@@ -121,8 +138,8 @@ const checkout = createCheckoutFlow(async (planId) => {
 checkout.open();
 ```
 
-Success is only ever rendered from that callback's result — the SDK never claims a payment was
-made. In the demo it's a labeled preview; no real payment is made.
+The demo does both: with `VITE_STRIPE_PRO_LINK` set (see `.env.example`), "Choose Pro" opens a
+real Stripe Payment Link; unset, it shows the labeled preview and no payment is possible.
 
 ## SDK build
 
@@ -147,12 +164,14 @@ through `exports` in `package.json` (`quickspin` and `quickspin/react` subpaths)
 │   │   ├── runner.ts           # Wait Runner — pure physics + canvas game
 │   │   ├── orbit.ts            # Orbit Catch — multi-catch, combo-scored
 │   │   ├── persistence.ts      # metrics, streaks, local bests (localStorage)
-│   │   ├── paywall.ts          # honest plans + checkout preview
+│   │   ├── paywall.ts          # honest plans + Stripe Payment Link checkout
 │   │   ├── styles.ts           # shadow-DOM widget CSS (CSS-variable themes)
 │   │   └── types.ts            # contracts
 │   ├── react/QuickSpinWidget.tsx  # React wrapper (quickspin/react)
 │   ├── test/setup.ts           # vitest localStorage shim
-│   └── demo/                   # landing page + before/after host demo
+│   ├── demo/hero.ts            # animated "spinner → play" hero story
+│   └── demo/                   # landing + revenue thesis + before/after demo
+├── .env.example                # VITE_STRIPE_PRO_LINK for the live checkout
 ├── vite.config.lib.ts          # ESM+CJS lib build
 ├── vite.config.iife.ts         # IIFE build
 ├── tsconfig.lib.json           # .d.ts build
