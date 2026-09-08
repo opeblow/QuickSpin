@@ -2,6 +2,7 @@ import "./demo.css";
 import { createQuickSpin } from "../sdk/index";
 import type { PlanOption, QuickSpinController, WaitEventHandler } from "../sdk/types";
 import { PLANS, createCheckoutFlow } from "../sdk/paywall";
+import { mountHeroDemo } from "./hero";
 import {
   bestLabel,
   currentDayStreak,
@@ -10,6 +11,11 @@ import {
   totalSessions,
   totalWaitTurnedToPlayMs,
 } from "../sdk/index";
+
+const STRIPE_LINKS: Record<string, string> = {};
+const proLink = import.meta.env.VITE_STRIPE_PRO_LINK as string | undefined;
+if (proLink) STRIPE_LINKS.pro = proLink;
+const LIVE_PAYMENTS = Boolean(STRIPE_LINKS.pro);
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -47,6 +53,9 @@ function main(): void {
   const app = document.getElementById("app");
   if (!app) return;
   app.appendChild(buildPage());
+
+  const heroCanvas = app.querySelector<HTMLCanvasElement>(".hero-canvas");
+  if (heroCanvas) mountHeroDemo(heroCanvas);
 
   const mount = app.querySelector<HTMLElement>("#qs-mount")!;
   const logEl = app.querySelector<HTMLElement>("#event-log")!;
@@ -191,7 +200,11 @@ function renderPlans(root: HTMLElement): void {
     const buy = el(
       "button",
       "btn " + (plan.highlighted ? "primary" : "ghost"),
-      plan.priceUsd === 0 ? "Choose Free (no checkout)" : "Choose Pro — checkout preview"
+      plan.priceUsd === 0
+        ? "Choose Free (no checkout)"
+        : plan.highlighted && LIVE_PAYMENTS
+          ? "Choose Pro \u2014 pay with Stripe"
+          : "Choose Pro \u2014 checkout preview"
     );
     buy.type = "button";
     buy.addEventListener("click", () => void choosePlan(plan, buy));
@@ -209,11 +222,14 @@ async function choosePlan(plan: PlanOption, btn: HTMLButtonElement): Promise<voi
     btn.disabled = true;
     return;
   }
-  checkoutBox = createCheckoutFlow((_planId) => {
-    // Simulate a payment provider round-trip. Success only renders from this
-    // confirmed result — QuickSpin never fabricates one.
-    return sleep(900).then(() => ({ ok: true, paymentId: `demo_${Date.now()}` }));
-  });
+  checkoutBox = createCheckoutFlow(
+    (_planId) => {
+      // Simulate a payment provider round-trip. Success only renders from this
+      // confirmed result — QuickSpin never fabricates one.
+      return sleep(900).then(() => ({ ok: true, paymentId: `demo_${Date.now()}` }));
+    },
+    { paymentLinks: STRIPE_LINKS }
+  );
   checkoutBox.open();
 }
 
@@ -225,7 +241,7 @@ function buildPage(): HTMLElement {
     el(
       "div",
       "wrap",
-      `<div class="logo">quick<span>spin</span></div>
+      `<div class="logo"><img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2096%2096'%3E%3Cdefs%3E%3ClinearGradient%20id='chip'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%238b7cff'/%3E%3Cstop%20offset='1'%20stop-color='%236658e8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x='6'%20y='6'%20width='84'%20height='84'%20rx='24'%20fill='url(%23chip)'/%3E%3Cpath%20d='M%2048%2020%20A%2028%2028%200%201%200%2048%2076%20A%2028%2028%200%201%200%2048%2020%20Z%20M%2048%2034%20A%2014%2014%200%201%201%2048%2062%20A%2014%2014%200%201%201%2048%2034%20Z'%20fill='%23ffffff'%20fill-rule='evenodd'/%3E%3Cpath%20d='M%2060%2062%20Q%2072%2068%2079%2084'%20fill='none'%20stroke='%23ffe06a'%20stroke-width='12'%20stroke-linecap='round'/%3E%3C/svg%3E" width="26" height="26" alt="QuickSpin"/><span>quick</span><span>spin</span></div>
        <ul class="nav-links">
          <li><a href="#demo">Product</a></li>
          <li><a href="#games">Games</a></li>
@@ -248,6 +264,14 @@ function buildPage(): HTMLElement {
         `you play while the model works, and the wait ends with the game.`
     )
   );
+
+  const heroDemo = el("div", "hero-demo");
+  const heroCanvas = el("canvas", "hero-canvas");
+  heroCanvas.width = 760;
+  heroCanvas.height = 300;
+  heroCanvas.setAttribute("aria-hidden", "true");
+  heroDemo.appendChild(heroCanvas);
+  hero.appendChild(heroDemo);
   const ctaRow = el("div", "cta-row");
   const runBtn = el("button", "btn primary", "Run demo generation");
   runBtn.id = "run-demo";
@@ -389,22 +413,31 @@ session.complete();                <span class="tok-cmt">// the wait ends with t
     el(
       "p",
       "",
-      `Only features that exist today are listed — everything else is labeled clearly. ` +
-        `Checkout below is a preview: pick a plan and see what success looks like, but no real payment is made.`
+      LIVE_PAYMENTS
+        ? `Checkout is live: “Choose Pro” opens a real Stripe Payment Link, payments land in ` +
+            `the Stripe dashboard, and revenue generated attaches to the entry (the Vault). ` +
+            `QuickSpin never claims a payment it can’t verify — Stripe is the source of truth.`
+        : `Everything listed exists today; everything else is labeled clearly. ` +
+            `Checkout below is a preview — no real payment is made. Set ` +
+            `<code>VITE_STRIPE_PRO_LINK</code> in <code>.env</code> (see <code>.env.example</code>) ` +
+            `and Pro switches to a real Stripe Payment Link that genuinely generates revenue.`
     )
   );
   const plansBox = el("div", "");
   renderPlans(plansBox);
   pricing.appendChild(plansBox);
 
+  const thesis = buildThesis();
   const footer = el(
     "footer",
     "footer wrap",
     `QuickSpin — an entry for the Commonsmade “Make Waiting for AI Fun” build challenge.`
   );
   page.appendChild(nav);
+  page.appendChild(buildStripeToastIfNeeded());
   page.appendChild(hero);
   page.appendChild(demo);
+  page.appendChild(thesis);
   page.appendChild(stats);
   page.appendChild(games);
   page.appendChild(sdk);
@@ -412,6 +445,79 @@ session.complete();                <span class="tok-cmt">// the wait ends with t
   page.appendChild(footer);
 
   return page;
+}
+
+function buildThesis(): HTMLElement {
+  const t = el("section", "section wrap");
+  t.id = "thesis";
+  t.appendChild(el("h2", "", `The wait is an abandoned checkout.`));
+  t.appendChild(
+    el(
+      "p",
+      "",
+      `Every AI call already costs you the inference bill. The “thinking…” spinner is where ` +
+        `users leave — and the response you paid for lands on nobody’s screen. QuickSpin gives ` +
+        `that gap something to lose: a score, a streak, a lead your user protects. They stay ` +
+        `through the handoff, and the handoff is where the value — and the revenue — starts.`
+    )
+  );
+  t.appendChild(
+    el(
+      "table",
+      "rot-table",
+      `<tr><th></th><th class="qs">Classic “thinking…”</th><th class="qs">With QuickSpin</th></tr>` +
+        `<tr><td>During the wait (10–30s)</td><td>Users tab away — nothing to lose</td><td>A game with a real stake: score, streak, best</td></tr>` +
+        `<tr><td>The handoff (response ready)</td><td>Lands on an empty tab</td><td>They stayed to see the answer</td></tr>` +
+        `<tr><td>Your paid inference</td><td>Missed</td><td>Seen — the point of the call</td></tr>` +
+        `<tr><td>Repeat visits</td><td>No reason to return</td><td>Returning for the streak</td></tr>` +
+        `<tr><td>Revenue</td><td>Impossible to meter</td><td>Pro, billed through real Stripe checkout</td></tr>`
+    )
+  );
+  t.appendChild(el("div", "steps-hostlabel", "HOW HOSTS MAKE MONEY"));
+  const steps = el("div", "steps");
+  steps.innerHTML =
+    `<div class="step"><div class="n">01</div><div class="t">Embed one div</div>` +
+    `<div class="d"><code>#quickspin</code> in any AI app — npm install, no infra.</div></div>` +
+    `<div class="step"><div class="n">02</div><div class="t">Play on every wait</div>` +
+    `<div class="d">Streaks and bests turn the 10–30s inference gap into daily returns.</div></div>` +
+    `<div class="step"><div class="n">03</div><div class="t">Bill the teams that want it</div>` +
+    `<div class="d">Pro routes to a real Stripe Payment Link. ` +
+    `Revenue generates — and the Vault pays 80% of what you earn.</div></div>`;
+  t.appendChild(steps);
+  t.appendChild(
+    el(
+      "p",
+      "note",
+      LIVE_PAYMENTS
+        ? "Pro checkout is configured and live in this demo."
+        : "Pro checkout is ready in code — set VITE_STRIPE_PRO_LINK in .env and this demo starts accepting real payments."
+    )
+  );
+  return t;
+}
+
+function buildStripeToastIfNeeded(): HTMLElement {
+  const params = new URLSearchParams(window.location.search);
+  const viaStripe =
+    params.has("payment_intent") ||
+    params.has("payment_intent_client_secret") ||
+    params.has("redirect_status");
+  if (!viaStripe) return el("div", "");
+  const toast = el("div", "toast");
+  toast.appendChild(
+    el(
+      "span",
+      "",
+      `Stripe returned you here after checkout. QuickSpin doesn’t verify payments — ` +
+        `open your Stripe dashboard to confirm the charge and see the revenue attached to this entry.`
+    )
+  );
+  const close = el("button", "", "\u00d7");
+  close.type = "button";
+  close.setAttribute("aria-label", "Dismiss");
+  close.addEventListener("click", () => toast.remove());
+  toast.appendChild(close);
+  return toast;
 }
 
 main();
