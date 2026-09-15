@@ -1,0 +1,106 @@
+[
+  {
+    "id": "quickspin@0.1.0",
+    "name": "quickspin",
+    "version": "0.1.0",
+    "size": 45324,
+    "unpackedSize": 147556,
+    "shasum": "72cb4e02689f4d25f5e900d533e6715d5516a814",
+    "integrity": "sha512-uwjK06wtgKNjzfgvAkyDgWj1SU/FR58b2ZHxl8UVUgjfTv8BWd7hU72c3UHHrXC5/E5MzxZzf12mWO2AFMTEvA==",
+    "filename": "quickspin-0.1.0.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1070,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 10230,
+        "mode": 420
+      },
+      {
+        "path": "dist/quickspin-react.cjs",
+        "size": 683,
+        "mode": 420
+      },
+      {
+        "path": "dist/quickspin-react.js",
+        "size": 794,
+        "mode": 420
+      },
+      {
+        "path": "dist/quickspin.cjs",
+        "size": 36611,
+        "mode": 420
+      },
+      {
+        "path": "dist/quickspin.iife.js",
+        "size": 36469,
+        "mode": 420
+      },
+      {
+        "path": "dist/quickspin.js",
+        "size": 45343,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/react/QuickSpinWidget.d.ts",
+        "size": 765,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/index.d.ts",
+        "size": 1387,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/orbit.d.ts",
+        "size": 1167,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/paywall.d.ts",
+        "size": 959,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/persistence.d.ts",
+        "size": 2260,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/runner.d.ts",
+        "size": 1497,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/state-machine.d.ts",
+        "size": 395,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/styles.d.ts",
+        "size": 99,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/types.d.ts",
+        "size": 5403,
+        "mode": 420
+      },
+      {
+        "path": "dist/types/sdk/widget.d.ts",
+        "size": 169,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 2255,
+        "mode": 420
+      }
+    ],
+    "entryCount": 18,
+    "bundled": []
+  }
+]

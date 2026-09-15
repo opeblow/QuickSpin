@@ -1,5 +1,7 @@
 const STORAGE_KEY = "quickspin:sessions:v1";
 
+export type SessionOutcome = "completed" | "cancelled" | "failed" | "unknown";
+
 export interface SessionRecord {
   id: string;
   gameId: string | null;
@@ -11,6 +13,10 @@ export interface SessionRecord {
   /** What the user told us the wait felt like (perceived-wait question). */
   feltWaitMs: number | null;
   completed: boolean;
+  /** Explicit terminal truth. Old records may not contain this field. */
+  outcome: SessionOutcome;
+  failureCode: string | null;
+  failureMessage: string | null;
   ts: number;
 }
 
@@ -42,7 +48,14 @@ function save(p: Persisted): void {
   }
 }
 
-let sessionStreakCounter = 0;
+function sessionStreak(records: SessionRecord[]): number {
+  let streak = 0;
+  for (let i = records.length - 1; i >= 0; i--) {
+    if (!records[i].completed) break;
+    streak += 1;
+  }
+  return streak;
+}
 
 export function recordSession(input: {
   gameId: string | null;
@@ -51,28 +64,47 @@ export function recordSession(input: {
   engagedPlayMs: number;
   feltWaitMs?: number | null;
   completed: boolean;
-}): { isHighScore: boolean; dayStreak: number; sessionStreak: number } {
+  outcome?: SessionOutcome;
+  failureCode?: string | null;
+  failureMessage?: string | null;
+}): { id: string; isHighScore: boolean; dayStreak: number; sessionStreak: number } {
   const p = loadStorage();
   const previousBest = input.gameId ? bestScore(input.gameId) : 0;
   const isHighScore = input.completed && !!input.gameId && (input.score ?? 0) > previousBest;
+  const id = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) as string;
 
   p.records.push({
-    id: (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)) as string,
+    id,
     gameId: input.gameId,
     score: input.completed ? input.score : null,
     actualWaitMs: input.actualWaitMs,
     engagedPlayMs: input.engagedPlayMs,
     feltWaitMs: input.feltWaitMs ?? null,
     completed: input.completed,
+    outcome: input.outcome ?? (input.completed ? "completed" : "unknown"),
+    failureCode: input.failureCode ?? null,
+    failureMessage: input.failureMessage ?? null,
     ts: Date.now(),
   });
   if (p.records.length > CAP) p.records = p.records.slice(-CAP);
   save(p);
 
-  if (input.completed) sessionStreakCounter += 1;
-  else sessionStreakCounter = 0;
+  return {
+    id,
+    isHighScore,
+    dayStreak: currentDayStreak(),
+    sessionStreak: sessionStreak(p.records),
+  };
+}
 
-  return { isHighScore, dayStreak: currentDayStreak(), sessionStreak: sessionStreakCounter };
+/** Persist the perception answer onto the exact completed wait record. */
+export function updateSessionPerception(id: string, feltWaitMs: number): SessionRecord | null {
+  const p = loadStorage();
+  const record = p.records.find((r) => r.id === id);
+  if (!record || !record.completed || !Number.isFinite(feltWaitMs) || feltWaitMs < 0) return null;
+  record.feltWaitMs = feltWaitMs;
+  save(p);
+  return { ...record };
 }
 
 export function bestScore(gameId: string): number {
@@ -90,10 +122,12 @@ export function bestLabel(gameId: string): string | null {
   return best ? `${best.score}` : null;
 }
 
-/** Total real AI wait time from completed sessions (i.e. actually gamified). */
+/** Total time actually spent playing during completed AI waits. */
 export function totalWaitTurnedToPlayMs(): number {
   const p = loadStorage();
-  return p.records.filter((r) => r.completed).reduce((sum, r) => sum + r.actualWaitMs, 0);
+  return p.records
+    .filter((r) => r.completed)
+    .reduce((sum, r) => sum + Math.min(r.actualWaitMs, Math.max(0, r.engagedPlayMs)), 0);
 }
 
 export function totalSessions(): number {
@@ -111,21 +145,26 @@ export function currentDayStreak(): number {
     p.records.filter((r) => r.completed).map((r) => new Date(r.ts).toDateString())
   );
   let streak = 0;
-  const cursor = new Date();
+  const cursor = new Date(Date.now());
   while (days.has(cursor.toDateString())) {
     streak++;
-    cursor.setTime(cursor.getTime() - 24 * 60 * 60 * 1000);
+    cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
 }
 
-/** Average perceived-vs-actual wait ratio across sessions with a felt value. */
-export function perceivedWaitStats(): { samples: number; avgRatio: number } {
+/** Average perceived-vs-actual ratio and signed felt-time delta. */
+export function perceivedWaitStats(): { samples: number; avgRatio: number; avgDeltaMs: number } {
   const p = loadStorage();
   const felt = p.records.filter((r) => typeof r.feltWaitMs === "number" && r.actualWaitMs > 0);
-  if (felt.length === 0) return { samples: 0, avgRatio: 0 };
+  if (felt.length === 0) return { samples: 0, avgRatio: 0, avgDeltaMs: 0 };
   const sumRatio = felt.reduce((s, r) => s + (r.feltWaitMs ?? 0) / r.actualWaitMs, 0);
-  return { samples: felt.length, avgRatio: sumRatio / felt.length };
+  const sumDelta = felt.reduce((s, r) => s + ((r.feltWaitMs ?? 0) - r.actualWaitMs), 0);
+  return {
+    samples: felt.length,
+    avgRatio: sumRatio / felt.length,
+    avgDeltaMs: sumDelta / felt.length,
+  };
 }
 
 export function leaderboard(gameId: string, limit = 10): { score: number; ts: number }[] {
@@ -138,7 +177,6 @@ export function leaderboard(gameId: string, limit = 10): { score: number; ts: nu
 }
 
 export function resetAll(): void {
-  sessionStreakCounter = 0;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {

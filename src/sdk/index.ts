@@ -7,26 +7,40 @@ export {
   completedSessions,
   currentDayStreak,
   leaderboard,
+  loadStorage,
   perceivedWaitStats,
   recordSession,
   resetAll,
   totalSessions,
   totalWaitTurnedToPlayMs,
+  updateSessionPerception,
 } from "./persistence";
+export type { SessionOutcome, SessionRecord } from "./persistence";
 export {
   createRunnerSurface,
+  runnerCollectSignal,
   runnerCollides,
   runnerGame,
+  runnerInjectSignal,
   runnerJump,
   runnerResult,
   runnerStep,
 } from "./runner";
-export { createOrbitSurface, orbitGame, orbitResult, orbitStep, orbitTap } from "./orbit";
+export {
+  createOrbitSurface,
+  orbitAwardSignal,
+  orbitGame,
+  orbitResult,
+  orbitStep,
+  orbitTap,
+} from "./orbit";
 export { PLANS } from "./paywall";
 export type {
   CheckoutResult,
   CreateQuickSpinOptions,
   EndReason,
+  ExecutionSignal,
+  ExecutionSignalKind,
   GameDefinition,
   GameHost,
   GameId,
@@ -51,14 +65,21 @@ function domReady(cb: () => void): void {
   }
 }
 
-/** Mount a QuickSpin instance on every `[data-quickspin]` element. */
+/** Mount a QuickSpin instance on every `[data-quickspin]` element and `#quickspin`. */
 export function autoInit(): () => void {
   const controllers: Array<{ destroy(): void }> = [];
   domReady(() => {
-    const targets = Array.from(document.querySelectorAll<HTMLElement>("[data-quickspin]"));
+    const targets = Array.from(
+      new Set(Array.from(document.querySelectorAll<HTMLElement>("[data-quickspin], #quickspin")))
+    );
     for (const el of targets) {
       try {
-        const controller = createQuickSpin({ target: el });
+        const delayAttr = el.dataset.quickspinDelay;
+        const delayMs = delayAttr == null ? undefined : Number(delayAttr);
+        const controller = createQuickSpin({
+          target: el,
+          delayMs: Number.isFinite(delayMs) ? delayMs : undefined,
+        });
         controllers.push(controller);
       } catch {
         /* invalid markup, skip that node */

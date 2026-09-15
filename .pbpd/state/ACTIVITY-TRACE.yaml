@@ -1,0 +1,124 @@
+schema_version: 1
+project: QuickSpin
+workstream: FINAL_QC_AND_SUBMISSION_FINISHER
+canonical_base_sha: c21eb03bb1cdcb0f18816000624dfaad38ebe965
+candidate_branch: final-judge-package
+candidate_head_policy: TRACK_BRANCH_HEAD
+project_complete: false
+readiness: BUILD_CANDIDATE_READY_WITH_LIMITATIONS
+
+activities:
+  - id: A-001
+    stage: reality-anchor-five-part-pattern
+    outcome: PASS
+    evidence:
+      - evidence/REALITY-ANCHOR.md
+    note: Signal/opportunity, primary-source real negative event, observable impact, design lesson, and scoped mitigation are explicit.
+
+  - id: A-002
+    stage: negative-path-and-unknown-assurance
+    outcome: PASS
+    evidence:
+      - evidence/FAILURE-LEDGER.md
+      - evidence/CLAIM-LEDGER.md
+    note: Actual rejected Promise terminates failed; insufficient provenance produces UNKNOWN/refusal and no gameplay mutation.
+
+  - id: A-003
+    stage: dependency-security-reconciliation
+    outcome: PASS_ZERO_NPM_AUDIT
+    evidence:
+      - evidence/security/SECURITY-GATE.md
+      - evidence/security/npm-audit-post-upgrade.json
+      - evidence/security/npm-audit-production.json
+      - evidence/security/npm-pack-dry-run.json
+
+  - id: A-004
+    stage: build-readiness-validation
+    outcome: PASS_WITH_LIMITATIONS
+    evidence:
+      - github-actions:34929604542
+    note: Node 22/24 CI, format, tests, judge verification, SDK/demo artifacts, and CodeQL passed before PR #4 merge.
+
+  - id: A-005
+    stage: public-runtime-attempt
+    outcome: BLOCKED_BY_REPOSITORY_PAGES_ENABLEMENT
+    evidence:
+      - github-actions:34929705731
+      - evidence/FAILURE-LEDGER.md
+    note: Candidate verification passed; configure-pages failed because no Pages site is enabled. No page URL is claimed.
+
+  - id: A-006
+    stage: final-judge-sample-reconciliation
+    outcome: PASS
+    evidence:
+      - github-actions:34930139522
+      - src/demo/main.ts
+    note: Displayed SDK sample now includes evidenceRef and matches runtime provenance contract.
+
+  - id: A-007
+    stage: one-shot-workflow-cleanup
+    outcome: PASS_AFTER_FAILURE_RETENTION
+    evidence:
+      - evidence/FAILURE-LEDGER.md
+    note: Later non-idempotent patch-workflow red runs remain recorded as F-09; temporary workflow is removed.
+
+  - id: A-008
+    stage: requirements-evidence-artifacts-risks-project-state-build-reconciliation
+    outcome: PASS_WITH_CONDITIONS
+    evidence:
+      - evidence/RECONCILIATION.md
+      - evidence/CYCLE-GATE-MATRIX.md
+      - evidence/GATE-REPORT.md
+      - state/CANONICAL-STATE.yaml
+    open_blocking_gates:
+      - PUBLIC_DEPLOYMENT_PROOF
+      - FINAL_RUNTIME_VISUAL_INSPECTION_DESKTOP_MOBILE
+      - NEGATIVE_PATH_VIDEO_CAPTURE
+      - QA_LIVE_REHEARSAL
+      - FINAL_SUBMISSION_LINK_AND_ASSET_LOCK
+
+  - id: A-009
+    stage: handoff-to-finisher
+    outcome: ACTIVE
+    evidence:
+      - HACKATHON-HANDOFF.yaml
+      - state/HANDOVER.yaml
+    note: Finalizer may continue QC/package work but PROJECT_COMPLETE remains forbidden until all blocking gates pass.
+
+  - id: A-010
+    stage: orchestration-and-judge-performance-assurance
+    outcome: PASS_WITH_EXPLICIT_UPSTREAM_UNKNOWN
+    evidence:
+      - evidence/ORCHESTRATION-JPA.md
+      - evidence/CYCLE-GATE-MATRIX.md
+    note: Faadil Agent System route and Judge Coverage/Critical-Path/Technical Ownership/Session Continuity gates are explicit. Missing HOI/Chief-of-Staff repo provenance remains UNKNOWN_IN_REPO rather than fabricated PASS.
+
+  - id: A-011
+    stage: supply-chain-install-script-review
+    outcome: REVIEWED_WARNING_NONRUNTIME
+    evidence:
+      - evidence/security/SUPPLY-CHAIN-REVIEW.md
+    note: npm 11 surfaced esbuild@0.28.2 postinstall as not covered by project allowScripts; audit remains zero and package boundary excludes build tooling. No blanket approval is inferred.
+
+failure_records_retained:
+  - github-actions:34925583311
+  - github-actions:34928143854
+  - github-actions:34928931640
+  - github-actions:34929036325
+  - github-actions:34929187191
+  - github-actions:34929705731
+  - github-actions:34930293175
+  - github-actions:34930326398
+  - github-actions:34958656629
+
+invariants:
+  - REAL_FAILURE_GT_FAKE_SUCCESS
+  - NO_EVIDENCE_NO_CLAIM
+  - UNKNOWN_IS_A_VALID_OUTCOME
+  - FAILURE_IS_NOT_COMPLETION
+  - UNKNOWN_PROGRESS_STAYS_INDETERMINATE
+  - CONTROLLED_DEMO_IS_NOT_LIVE_PROVIDER_EVIDENCE
+  - IMPLEMENTATION_PRESENCE_IS_NOT_EXECUTION_EVIDENCE
+  - EXPECTED_URL_IS_NOT_RUNTIME_EVIDENCE
+  - PROJECT_COMPLETE_REQUIRES_TERMINAL_RECONCILIATION
+  - MISSING_ORCHESTRATION_PROVENANCE_STAYS_UNKNOWN

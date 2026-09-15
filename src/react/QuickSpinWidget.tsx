@@ -7,23 +7,20 @@ export interface QuickSpinWidgetProps {
   game?: string;
   theme?: ThemeConfig;
   onEvent?: WaitEventHandler;
-  /**
-   * Called once with the live controller so the host can drive the session:
-   * `onReady={c => { c.start({ status: "Reasoning…" }); c.update?.(); }}`
-   */
+  /** Delay before the playable surface appears. Defaults to 650ms. */
+  delayMs?: number;
+  /** Called once with the live controller so the host can drive the session. */
   onReady?: (controller: QuickSpinController) => void;
   className?: string;
   style?: React.CSSProperties;
 }
 
-/**
- * Mount a QuickSpin widget inside a React tree. The controller is exposed via
- * `onReady` so the host can call `start()`/`track()` from event handlers.
- */
+/** Mount a QuickSpin widget inside a React tree. */
 export function QuickSpinWidget({
   game,
   theme,
   onEvent,
+  delayMs,
   onReady,
   className,
   style,
@@ -38,6 +35,8 @@ export function QuickSpinWidget({
   gameRef.current = game;
   const themeRef = useRef(theme);
   themeRef.current = theme;
+  const delayRef = useRef(delayMs);
+  delayRef.current = delayMs;
 
   useEffect(() => {
     const el = ref.current;
@@ -46,6 +45,7 @@ export function QuickSpinWidget({
       target: el,
       game: gameRef.current,
       theme: themeRef.current,
+      delayMs: delayRef.current,
       onEvent: (e) => onEventRef.current?.(e),
     });
     onReadyRef.current?.(controller);

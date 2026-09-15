@@ -1,0 +1,108 @@
+project: QuickSpin
+canonical_base:
+  branch: main
+  sha_at_finisher_start: c21eb03bb1cdcb0f18816000624dfaad38ebe965
+candidate:
+  branch: future-classic-runtime-lock
+  head_policy: TRACK_BRANCH_HEAD
+workstream: FINAL_QC_AND_SUBMISSION_FINISHER
+lifecycle_state: BUILD_CANDIDATE_READY_WITH_LIMITATIONS
+project_complete: false
+
+core_cycle:
+  - RUBRIC
+  - PAIN
+  - PROBLEM
+  - DIFFERENTIATOR
+  - EXECUTION
+  - EVIDENCE
+  - STORY
+  - DEMO
+  - QA
+
+invariants:
+  - REAL_FAILURE_GT_FAKE_SUCCESS
+  - NO_EVIDENCE_NO_CLAIM
+  - UNKNOWN_IS_A_VALID_OUTCOME
+  - UNKNOWN_PROGRESS_STAYS_INDETERMINATE
+  - FAILURE_IS_NOT_COMPLETION
+  - CONTROLLED_DEMO_IS_NOT_LIVE_PROVIDER_EVIDENCE
+  - IMPLEMENTATION_PRESENCE_IS_NOT_EXECUTION_EVIDENCE
+  - EXPECTED_URL_IS_NOT_RUNTIME_EVIDENCE
+  - PROJECT_COMPLETE_REQUIRES_TERMINAL_RECONCILIATION
+
+verified_reality_pattern:
+  signal_opportunity: PASS
+  real_negative_event: PASS
+  observable_impact: PASS
+  design_implication: PASS
+  mitigation_with_scope_boundary: PASS
+  evidence: evidence/REALITY-ANCHOR.md
+
+completed:
+  - P0_P1_PRODUCT_PROOF_PASS
+  - EXECUTION_SIGNALS_LAYER
+  - REALITY_ANCHOR_FIVE_PART_PATTERN
+  - REAL_NEGATIVE_EVENT_VERIFIED_PRIMARY_SOURCE
+  - NEGATIVE_PATH_IMPLEMENTED
+  - UNKNOWN_ABSTENTION_IMPLEMENTED
+  - FAILURE_LEDGER_CREATED_AND_RETAINED
+  - RUBRIC_TRACEABILITY_CREATED
+  - DEPENDENCY_SECURITY_RECONCILIATION_PASS_ZERO_NPM_AUDIT
+  - NODE_22_24_CI_AND_CODEQL_GREEN
+  - JUDGE_QA_BANK_CREATED
+  - QA_REHEARSAL_PACK_PREPARED
+  - VIDEO_SHOT_LIST_PREPARED
+  - SUBMISSION_PACKAGE_DRAFT_PREPARED
+  - SDK_SAMPLE_PROVENANCE_RECONCILED
+  - PUBLIC_DEPLOYMENT_PROOF_VERIFIED_VERCEL
+  - FUTURE_CLASSIC_MULTI_PAGE_ARCHITECTURE
+  - ROUTES_HOME_LAB_PROOF_SDK_JUDGES_HTTP_200
+  - FUTURE_CLASSIC_BUILD_CI_AND_CODEQL_GREEN
+
+open_blocking_gates:
+  - FINAL_RUNTIME_VISUAL_INSPECTION_DESKTOP_MOBILE
+  - NEGATIVE_PATH_VIDEO_CAPTURE
+  - QA_LIVE_REHEARSAL
+  - FINAL_SUBMISSION_LINK_AND_ASSET_LOCK
+
+open_nonblocking_evidence_gaps:
+  - BROADER_USER_VALIDATION_OF_PERCEIVED_WAIT_EFFECT
+
+closed_risks:
+  dependency_security_reconciliation: PASS_ZERO_NPM_AUDIT
+  one_shot_patch_workflow_noise: REMOVED_AFTER_FAILURE_RETENTION
+  public_deployment_proof: PASS_VERIFIED_VERCEL_RUNTIME
+  single_page_jury_compression_risk: MITIGATED_BY_MULTI_PAGE_ARCHITECTURE
+
+next_required_gate: FINAL_RUNTIME_VISUAL_INSPECTION_DESKTOP_MOBILE
+
+terminal_sequence:
+  - verification-before-completion
+  - requirements-evidence-artifacts-risks-project-state-actual-build-reconciliation
+  - runtime-and-visual-proof-lock
+  - demo-video-and-qa-lock
+  - submission-package-lock
+  - build-readiness
+  - handoff-to-finisher
+  - final-qc
+  - project-complete-only-if-all-blocking-gates-pass
+
+security_gate: PASS_ZERO_NPM_AUDIT
+runtime_gate: PASS_VERIFIED_PUBLIC_RUNTIME
+runtime_source_sha: 27de7b3b4119b6499eda79effccadf262028de58
+runtime_deployment_id: dpl_Gu77jod1hxSEPu8Sz9pRPAq3zbyL
+runtime_url: https://quickspin-runtime.vercel.app
+runtime_routes_verified:
+  - /
+  - /lab
+  - /proof
+  - /sdk
+  - /judges
+runtime_evidence: evidence/runtime/VERCEL-PRODUCTION-RUNTIME.md
+visual_direction: SMOKED_PEARL_GRAPHITE_OXIDIZED_COPPER_ELECTRIC_SIGNAL
+visual_architecture: FUTURE_CLASSIC_MULTI_PAGE
+visual_gate: PASS_WITH_CONDITIONS_PENDING_PIXEL_LEVEL_DESKTOP_MOBILE_INSPECTION
+video_gate: PENDING_CAPTURE
+qa_gate: PREPARED_PENDING_LIVE_REHEARSAL
+submission_gate: DRAFT_READY_PENDING_FINAL_LINKS

@@ -1,4 +1,12 @@
-import type { EndReason, GameDefinition, GameHost, GameInstance, GameResult } from "./types";
+import type {
+  EndReason,
+  ExecutionSignal,
+  ExecutionSignalKind,
+  GameDefinition,
+  GameHost,
+  GameInstance,
+  GameResult,
+} from "./types";
 
 export interface OrbitSurface {
   baseSpeed: number;
@@ -12,6 +20,36 @@ export interface OrbitSurface {
   bestCombo: number;
   radius: number;
   active: boolean;
+  signalBonus: number;
+  signalsCaught: number;
+}
+
+function signalValue(kind: ExecutionSignalKind): number {
+  switch (kind) {
+    case "retrieval":
+      return 150;
+    case "tool":
+      return 200;
+    case "artifact":
+      return 250;
+    case "warning":
+      return 300;
+  }
+}
+
+function signalColor(kind: ExecutionSignalKind | null): string {
+  switch (kind) {
+    case "retrieval":
+      return "#72d8ff";
+    case "tool":
+      return "#b99cff";
+    case "artifact":
+      return "#60efb7";
+    case "warning":
+      return "#ffcf70";
+    default:
+      return "#60efb7";
+  }
 }
 
 export function createOrbitSurface(width: number, height: number): OrbitSurface {
@@ -27,6 +65,8 @@ export function createOrbitSurface(width: number, height: number): OrbitSurface 
     bestCombo: 0,
     radius: 9,
     active: true,
+    signalBonus: 0,
+    signalsCaught: 0,
   };
 }
 
@@ -88,15 +128,22 @@ export function orbitTap(
   return hit;
 }
 
+/** Add score only after the player catches a target carrying a real host signal. */
+export function orbitAwardSignal(s: OrbitSurface, signal: ExecutionSignal): void {
+  s.signalBonus += signalValue(signal.kind);
+  s.signalsCaught += 1;
+}
+
 export function orbitResult(s: OrbitSurface, reason: EndReason): GameResult {
   const acc = s.caught + s.misses;
   const accuracy = acc > 0 ? s.caught / acc : 0;
   const score = Math.max(
     0,
-    Math.round(s.caught * 1000 * (0.4 + accuracy * 0.6) + s.bestCombo * 50)
+    Math.round(s.caught * 1000 * (0.4 + accuracy * 0.6) + s.bestCombo * 50 + s.signalBonus)
   );
   const notes: string[] = [];
   if (s.caught >= 3) notes.push(`Best combo: ${s.bestCombo}`);
+  if (s.signalsCaught > 0) notes.push(`AI signals caught: ${s.signalsCaught}`);
   if (reason === "ai-complete") notes.push("AI finished — you beat the wait.");
   return { score, label: `${score.toLocaleString()} pts`, notes, reason };
 }
@@ -105,7 +152,7 @@ export const orbitGame: GameDefinition = {
   id: "orbit",
   name: "Orbit Catch",
   tagline: "Catch the glow target. Multi-catch, combo-scored.",
-  controls: "Tap the target to catch it",
+  controls: "Tap/click or press Space/Enter · catch live AI signals",
   create(host: GameHost): GameInstance {
     let logicalW = host.canvas.clientWidth || 480;
     let logicalH = host.canvas.clientHeight || 220;
@@ -113,6 +160,8 @@ export const orbitGame: GameDefinition = {
     let paused = false;
     let lastW = 0;
     let lastH = 0;
+    let currentSignal: ExecutionSignal | null = null;
+    const signalQueue: ExecutionSignal[] = [];
     const ctx = host.canvas.getContext("2d");
 
     const resizeIfNeeded = () => {
@@ -131,11 +180,32 @@ export const orbitGame: GameDefinition = {
       }
     };
 
+    const promoteSignal = () => {
+      if (!currentSignal) currentSignal = signalQueue.shift() ?? null;
+    };
+
+    const attemptCatch = (tx: number, ty: number) => {
+      const hit = orbitTap(state, tx, ty, logicalW, logicalH);
+      if (hit && currentSignal) {
+        orbitAwardSignal(state, currentSignal);
+        currentSignal = signalQueue.shift() ?? null;
+      }
+      return hit;
+    };
+
     const onPointer = (e: PointerEvent) => {
       if (!state.active) return;
       e.preventDefault();
       const rect = host.canvas.getBoundingClientRect();
-      orbitTap(state, e.clientX - rect.left, e.clientY - rect.top, logicalW, logicalH);
+      attemptCatch(e.clientX - rect.left, e.clientY - rect.top);
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (!state.active || (e.key !== "Enter" && e.code !== "Space")) return;
+      e.preventDefault();
+      // Keyboard mode intentionally targets the live glow position: the skill is timing,
+      // while pointer mode adds spatial targeting. Both produce genuine game state.
+      attemptCatch(state.fishX, state.fishY);
     };
 
     const draw = () => {
@@ -158,42 +228,65 @@ export const orbitGame: GameDefinition = {
         ctx.stroke();
       }
       ctx.restore();
+
+      const color = signalColor(currentSignal?.kind ?? null);
       const g = ctx.createRadialGradient(state.fishX, state.fishY, 0, state.fishX, state.fishY, 30);
-      g.addColorStop(0, "rgba(96,239,183,0.9)");
-      g.addColorStop(1, "rgba(96,239,183,0)");
+      g.addColorStop(0, `${color}e6`);
+      g.addColorStop(1, `${color}00`);
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(state.fishX, state.fishY, 30, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "#60efb7";
+      ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(state.fishX, state.fishY, state.radius, 0, Math.PI * 2);
       ctx.fill();
+
       ctx.font = "10px system-ui, sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.55)";
       ctx.fillText(
-        `caught ${state.caught} · combo ${state.combo} · accuracy ${state.caught > 0 || state.misses > 0 ? Math.round((state.caught / Math.max(1, state.caught + state.misses)) * 100) : 0}%`,
+        `caught ${state.caught} · signals ${state.signalsCaught} · combo ${state.combo} · accuracy ${state.caught > 0 || state.misses > 0 ? Math.round((state.caught / Math.max(1, state.caught + state.misses)) * 100) : 0}%`,
         8,
         12
       );
+      if (currentSignal) {
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.fillText(`${currentSignal.kind}: ${currentSignal.label}`.slice(0, 44), 8, 28);
+      }
+      if (host.phase) {
+        const label = host.phase.slice(0, 30);
+        const width = ctx.measureText(label).width;
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillText(label, Math.max(8, logicalW - width - 8), logicalH - 10);
+      }
     };
 
     return {
       start() {
         paused = false;
         resizeIfNeeded();
+        host.canvas.tabIndex = 0;
         host.canvas.addEventListener("pointerdown", onPointer);
+        host.canvas.addEventListener("keydown", onKey);
         host.canvas.setAttribute(
           "aria-label",
           orbitGame.name +
-            ": tap the glow target to catch it. More catches in a row build a combo. While the model thinks, keep your hand warm."
+            ": catch the glow target while the model thinks. Tap or click the target, or press Space or Enter when the canvas is focused. Host execution signals are attached to live targets and score only when caught."
         );
+        promoteSignal();
       },
       tick(_time: number, dt: number) {
         if (paused) return;
         resizeIfNeeded();
-        orbitStep(state, Math.min(dt, 0.05), logicalW, logicalH, host.progress ?? 0);
+        orbitStep(state, Math.min(dt, 0.05), logicalW, logicalH, host.intensity);
         draw();
+      },
+      signal(signal) {
+        if (!currentSignal) currentSignal = signal;
+        else {
+          signalQueue.push(signal);
+          if (signalQueue.length > 8) signalQueue.shift();
+        }
       },
       finish(reason) {
         return orbitResult(state, reason);
@@ -206,6 +299,7 @@ export const orbitGame: GameDefinition = {
       },
       destroy() {
         host.canvas.removeEventListener("pointerdown", onPointer);
+        host.canvas.removeEventListener("keydown", onKey);
       },
     };
   },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createOrbitSurface, orbitResult, orbitStep, orbitTap } from "./orbit";
+import { createOrbitSurface, orbitAwardSignal, orbitResult, orbitStep, orbitTap } from "./orbit";
 
 describe("orbit physics", () => {
   it("a catch never ends the game — it just stacks the combo", () => {
@@ -39,6 +39,19 @@ describe("orbit physics", () => {
     s.vy = 0;
     orbitStep(s, 1 / 60, 480, 220, 0);
     expect(s.fishX).toBeGreaterThanOrEqual(14);
+  });
+
+  it("adds an execution-signal bonus only when the game awards a caught signal", () => {
+    const s = createOrbitSurface(480, 220);
+    expect(orbitResult(s, "ai-complete").score).toBe(0);
+    orbitAwardSignal(s, {
+      kind: "artifact",
+      label: "Draft assembled",
+      evidenceRef: "test:orbit:artifact-1",
+    });
+    expect(s.signalsCaught).toBe(1);
+    expect(s.signalBonus).toBe(250);
+    expect(orbitResult(s, "ai-complete").score).toBe(250);
   });
 
   it("scoring accounts for accuracy and best combo", () => {

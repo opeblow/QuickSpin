@@ -1,0 +1,55 @@
+project: QuickSpin
+workstream: FINAL_QC_AND_SUBMISSION_FINISHER
+source_main_sha: c21eb03bb1cdcb0f18816000624dfaad38ebe965
+candidate_branch: final-judge-package
+objective: >-
+  Finish runtime proof, visual inspection, demo/video capture, live Q&A rehearsal,
+  submission lock, and terminal reconciliation without changing product truth.
+
+current_truth:
+  main_is_last_merged_canonical_base: true
+  final_candidate_is_isolated_on_branch: true
+  branch_requires_ci_before_merge: true
+  project_complete: false
+  readiness: BUILD_CANDIDATE_READY_WITH_LIMITATIONS
+  security_gate: PASS_ZERO_NPM_AUDIT
+  real_external_negative_event: PASS_PRIMARY_SOURCE
+  runtime_negative_path: PASS
+  unknown_abstention: PASS
+  public_runtime: PENDING_REPOSITORY_PAGES_ENABLEMENT
+
+proof_paths:
+  - evidence/REALITY-ANCHOR.md
+  - evidence/FAILURE-LEDGER.md
+  - evidence/CLAIM-LEDGER.md
+  - evidence/JUDGE-CYCLE.md
+  - evidence/CYCLE-GATE-MATRIX.md
+  - evidence/RUBRIC-TRACEABILITY.md
+  - evidence/RECONCILIATION.md
+  - evidence/GATE-REPORT.md
+  - evidence/JUDGE-QA.md
+  - evidence/Q&A-REHEARSAL.md
+  - evidence/VISUAL-JURY-REVIEW.md
+  - evidence/security/SECURITY-GATE.md
+  - .pbpd/state/ACTIVITY-TRACE.yaml
+  - demo.md
+
+blocking_open_items:
+  - enable_and_verify_public_runtime
+  - inspect_final_runtime_desktop_mobile_and_reduced_motion
+  - capture_wait_receipt_and_negative_path_video
+  - perform_live_qa_rehearsal_against_claim_ledger
+  - lock_final_submission_urls_assets_copy
+  - rerun_terminal_reconciliation_and_final_qc
+
+nonblocking_open_item:
+  - broader_user_validation_of_perceived_wait_effect
+
+next_action: >-
+  Obtain a real public runtime URL first. Do not use an expected hostname as evidence.
+  Then inspect rendering, capture the final demo, rehearse Q&A, lock submission links,
+  run canonical verification, and only then decide whether PROJECT_COMPLETE may promote.
+
+rollback: >-
+  Close/delete final-judge-package and keep main at c21eb03bb1cdcb0f18816000624dfaad38ebe965
+  if finalizer changes fail or create unacceptable scope risk.

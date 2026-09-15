@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   createRunnerSurface,
+  runnerCollectSignal,
   runnerCollides,
+  runnerInjectSignal,
   runnerJump,
   runnerResult,
   runnerStep,
@@ -78,6 +80,24 @@ describe("runner physics", () => {
     expect(s.obstacleX).toBe(100);
     runnerJump(s);
     expect(s.playerY).toBe(s.groundY - 40);
+  });
+
+  it("only scores a host execution signal after an actual pickup collision", () => {
+    const s = createRunnerSurface(480, 220);
+    expect(
+      runnerInjectSignal(s, 480, {
+        kind: "tool",
+        label: "Called restaurant search",
+        evidenceRef: "test:runner:tool-1",
+      })
+    ).toBe(true);
+    expect(s.signalBonus).toBe(0);
+    s.signalX = 8;
+    s.signalY = s.playerY + 8;
+    expect(runnerCollectSignal(s)).toBe(true);
+    expect(s.signalsCollected).toBe(1);
+    expect(s.signalBonus).toBe(200);
+    expect(runnerResult(s, "ai-complete").score).toBeGreaterThanOrEqual(200);
   });
 
   it("reports an honest score from live state, tagged to the reason", () => {

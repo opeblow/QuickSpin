@@ -1,0 +1,181 @@
+project: QuickSpin
+framework: HACKATHON_OPERATING_GATES
+principle: Real failure > fake success
+project_complete: false
+
+required_core_cycle:
+  - RUBRIC
+  - PAIN
+  - PROBLEM
+  - DIFFERENTIATOR
+  - EXECUTION
+  - EVIDENCE
+  - STORY
+  - DEMO
+  - QA
+
+reality_anchor_pattern:
+  - SIGNAL_POSITIVE_OPPORTUNITY
+  - REAL_NEGATIVE_EVENT
+  - OBSERVABLE_IMPACT
+  - DESIGN_LESSON
+  - RESPONSE_MITIGATION
+
+terminal_sequence:
+  - VERIFICATION_BEFORE_COMPLETION
+  - REQUIREMENTS_EVIDENCE_ARTIFACTS_RISKS_PROJECT_STATE_ACTUAL_BUILD_RECONCILIATION
+  - RUNTIME_VISUAL_PROOF_LOCK
+  - DEMO_VIDEO_QA_LOCK
+  - SUBMISSION_PACKAGE_LOCK
+  - BUILD_READINESS
+  - HANDOFF_TO_FINISHER
+  - FINAL_QC
+  - PROJECT_COMPLETE
+
+gates:
+  - id: G01
+    name: ELIGIBILITY_AND_RUBRIC_FIT
+    pass_when: Product proof maps to challenge waiting experience, originality, AI-native fit, repeatability, and execution.
+    status: PASS
+    evidence: evidence/RUBRIC-TRACEABILITY.md
+
+  - id: G02
+    name: REALITY_AND_PAIN
+    pass_when: Five-part reality anchor is complete and primary-source grounded.
+    status: PASS
+    evidence: evidence/REALITY-ANCHOR.md
+
+  - id: G03
+    name: REAL_NEGATIVE_EVENT
+    pass_when: At least one concrete real production failure/degradation/rejection is verified from an authoritative source.
+    status: PASS_PRIMARY_SOURCE
+    evidence: evidence/REALITY-ANCHOR.md
+
+  - id: G04
+    name: OBSERVABLE_IMPACT
+    pass_when: The negative event has observable delay/rejection/failure/friction rather than only theoretical risk.
+    status: PASS
+    evidence: evidence/REALITY-ANCHOR.md
+
+  - id: G05
+    name: DESIGN_LESSON_AND_MITIGATION
+    pass_when: Failure translates into explicit product invariants and scoped mitigation without claiming provider repair.
+    status: PASS
+    evidence: evidence/REALITY-ANCHOR.md
+
+  - id: G06
+    name: NEGATIVE_PATH
+    pass_when: A runtime failure produces a distinct failed outcome, remains persisted, and produces no fabricated response.
+    status: PASS
+    evidence: evidence/FAILURE-LEDGER.md
+
+  - id: G07
+    name: UNKNOWN_ABSTENTION
+    pass_when: Insufficient provenance produces UNKNOWN/refusal and no gameplay mutation.
+    status: PASS
+    evidence: evidence/CLAIM-LEDGER.md
+
+  - id: G08
+    name: DISTINCTION
+    pass_when: Differentiator is execution-coupled rather than a cosmetic spinner replacement.
+    status: PASS
+    evidence: evidence/RUBRIC-TRACEABILITY.md
+
+  - id: G09
+    name: CLAIM_EVIDENCE_RECONCILIATION
+    pass_when: Every material claim is VERIFIED, VERIFIED_WITH_SCOPE, UNKNOWN, REFUSED, or NOT_IMPLEMENTED.
+    status: PASS_WITH_LIMITATIONS
+    evidence: evidence/CLAIM-LEDGER.md
+
+  - id: G10
+    name: BUILD_CORRECTNESS
+    pass_when: Typecheck, formatting, tests, judge evidence verifier, SDK build, and demo build pass.
+    status: PASS
+    evidence: github-actions:34929604542
+
+  - id: G11
+    name: SECURITY_AND_PACKAGE_BOUNDARY
+    pass_when: Full and production npm audits are clean, CodeQL is green, and dev toolchain does not leak into package surface.
+    status: PASS_ZERO_NPM_AUDIT
+    evidence: evidence/security/SECURITY-GATE.md
+
+  - id: G12
+    name: ACCESSIBILITY_INPUT_PARITY
+    pass_when: Keyboard/pointer/focus behavior exists for material game interactions and reduced-motion path exists.
+    status: PASS_WITH_IMPLEMENTATION_EVIDENCE_PENDING_FINAL_RENDER_INSPECTION
+
+  - id: G13
+    name: FAST_RESPONSE_AND_PROGRESS_HONESTY
+    pass_when: Fast responses avoid UI flash and unknown progress remains indeterminate.
+    status: PASS
+
+  - id: G14
+    name: STATE_PERSISTENCE_INTEGRITY
+    pass_when: completed/failed/cancelled outcomes and engaged-play metrics remain semantically distinct.
+    status: PASS
+
+  - id: G15
+    name: UX_UI_AND_DOMAIN_NATIVE_VISUAL
+    pass_when: Core proof is legible without narration, avoids generic AI-SaaS ambiguity, and reduced-motion/mobile layouts are inspected in final runtime.
+    status: PASS_WITH_CONDITIONS
+    evidence: evidence/VISUAL-JURY-REVIEW.md
+
+  - id: G16
+    name: PUBLIC_RUNTIME
+    pass_when: Deployment returns a real page URL and that URL is externally fetched/exercised.
+    status: PENDING_REPOSITORY_PAGES_ENABLEMENT
+    evidence: github-actions:34929705731
+
+  - id: G17
+    name: DEMO_PATH
+    pass_when: Happy path, Wait Receipt, negative path, and UNKNOWN rule are demonstrable from the candidate runtime.
+    status: PASS_PENDING_CAPTURE_AND_PUBLIC_RUNTIME
+
+  - id: G18
+    name: VIDEO
+    pass_when: Final capture visibly proves material claims and negative path without unsupported narration.
+    status: PENDING_CAPTURE
+
+  - id: G19
+    name: QA
+    pass_when: Judge objections can be answered from evidence without invention or claim drift.
+    status: PREPARED_PENDING_LIVE_REHEARSAL
+    evidence: evidence/Q&A-REHEARSAL.md
+
+  - id: G20
+    name: SUBMISSION_PACKAGE
+    pass_when: Runtime, repo, video, copy, evidence, and required challenge fields are final and consistent.
+    status: DRAFT_READY_PENDING_FINAL_LINKS
+
+  - id: G21
+    name: LICENSE_IP_AND_THIRD_PARTY_CLAIMS
+    pass_when: No asset, package, hosted service, payment, publication, or integration is claimed beyond verified usage/license/runtime evidence.
+    status: PASS_WITH_NO_NEW_UNVERIFIED_ASSET_CLAIMS
+
+  - id: G22
+    name: ROLLBACK_AND_HANDOFF
+    pass_when: Candidate remains isolated/recoverable and a future finisher can resume from canonical state without reconstructing intent.
+    status: PASS_ACTIVE
+    evidence: state/HANDOVER.yaml
+
+  - id: G23
+    name: VERIFICATION_BEFORE_COMPLETION
+    pass_when: Requirements, evidence, artifacts, risks, project state, and actual build reconcile with no silent UNKNOWN.
+    status: PASS_WITH_CONDITIONS
+    evidence: evidence/RECONCILIATION.md
+
+  - id: G24
+    name: BUILD_READINESS_AND_PROJECT_COMPLETE
+    pass_when: All blocking final gates pass; only then may readiness promote beyond BUILD_CANDIDATE_READY_WITH_LIMITATIONS and PROJECT_COMPLETE become true.
+    status: BUILD_CANDIDATE_READY_WITH_LIMITATIONS
+
+blocking_final_gates:
+  - PUBLIC_RUNTIME
+  - FINAL_RUNTIME_VISUAL_INSPECTION_DESKTOP_MOBILE
+  - VIDEO_CAPTURE
+  - QA_LIVE_REHEARSAL
+  - SUBMISSION_PACKAGE_FINAL_LINK_LOCK
+  - TERMINAL_RECONCILIATION_AND_FINAL_QC
+
+nonblocking_evidence_gap:
+  - BROADER_USER_VALIDATION_OF_PERCEIVED_WAIT_EFFECT

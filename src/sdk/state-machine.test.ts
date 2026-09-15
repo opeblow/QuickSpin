@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { SessionStateMachine } from "./state-machine";
-import type { SessionStatus } from "./types";
+import type { SessionStatus, WaitEvent } from "./types";
 
-function make(onEvent?: ReturnType<typeof vi.fn>) {
-  const emit = onEvent ?? vi.fn();
+function make() {
+  const emit = vi.fn<(event: WaitEvent) => void>();
   return { machine: new SessionStateMachine(emit), emit };
 }
 
@@ -16,6 +16,17 @@ describe("SessionStateMachine", () => {
     expect(machine.transition("response-ready")).toBe(true);
     expect(machine.transition("completed")).toBe(true);
     expect(machine.status).toBe("completed");
+  });
+
+  it("resets progress when a terminal session returns to idle", () => {
+    const { machine } = make();
+    machine.transition("waiting");
+    machine.setProgress(0.7);
+    machine.transition("completed");
+    expect(machine.progress).toBe(0.7);
+    machine.transition("idle");
+    expect(machine.progress).toBeNull();
+    expect(machine.transition("waiting")).toBe(true);
   });
 
   it("is idempotent for same-state transitions", () => {
@@ -70,8 +81,7 @@ describe("SessionStateMachine", () => {
   });
 
   it("emits phase {from,to} and progress events", () => {
-    const emit = vi.fn();
-    const { machine } = make(emit);
+    const { machine, emit } = make();
     machine.transition("waiting");
     expect(emit).toHaveBeenCalledWith({
       type: "phase",

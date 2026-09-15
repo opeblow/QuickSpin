@@ -1,0 +1,55 @@
+name: Deploy QuickSpin demo
+
+# Public runtime is a blocking evidence gate, but GitHub Pages is not yet enabled for this repo.
+# Keep deployment manual until repository Pages is configured; otherwise every main push would
+# reproduce the known F-08 authority/configuration failure and create meaningless red noise.
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy judge demo
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify candidate
+        run: npm run check
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Build demo for repository Pages path
+        run: npm run build -- --base=/quickspin/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./dist-demo
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

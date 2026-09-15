@@ -1,5 +1,4 @@
-/** Shadow-DOM-scoped styles for the QuickSpin widget. No CSS leaks to/from
- *  the host page; themes arrive as CSS variables set on a `:host` wrapper. */
+/** Shadow-DOM-scoped styles for the QuickSpin widget. */
 export const WIDGET_CSS = String.raw`
 :host {
   --qs-primary: #8b7cff;
@@ -26,6 +25,26 @@ export const WIDGET_CSS = String.raw`
   font-size: 13px;
   line-height: 1.5;
 }
+
+.quickspin-collapsed {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.quickspin-root.is-collapsed > :not(.quickspin-collapsed) { display: none; }
+.quickspin-root.is-collapsed .quickspin-collapsed { display: flex; }
+.quickspin-collapsed-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--qs-muted);
+  font-size: 12px;
+}
+.quickspin-reopen { padding: 7px 11px !important; white-space: nowrap; }
 
 .quickspin-header {
   display: flex;
@@ -76,10 +95,7 @@ export const WIDGET_CSS = String.raw`
   font-variant-numeric: tabular-nums;
 }
 
-.quickspin-tools {
-  display: flex;
-  gap: 4px;
-}
+.quickspin-tools { display: flex; gap: 4px; }
 
 .quickspin-btn {
   appearance: none;
@@ -101,11 +117,7 @@ export const WIDGET_CSS = String.raw`
   color: var(--qs-text);
 }
 
-.quickspin-stage {
-  position: relative;
-  min-height: 220px;
-}
-
+.quickspin-stage { position: relative; min-height: 220px; }
 .quickspin-canvas {
   display: block;
   width: 100%;
@@ -125,18 +137,13 @@ export const WIDGET_CSS = String.raw`
   text-align: center;
   background: color-mix(in srgb, var(--qs-surface) 88%, transparent);
   animation: qs-fade 180ms ease-out;
+  overflow: auto;
 }
+.quickspin-overlay[hidden] { display: none; }
+@keyframes qs-fade { from { opacity: 0; } to { opacity: 1; } }
 
-.quickspin-overlay[hidden] {
-  display: none;
-}
-
-@keyframes qs-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.quickspin-waiting-label {
+.quickspin-waiting-label,
+.quickspin-label {
   color: var(--qs-muted);
   font-size: 12.5px;
 }
@@ -147,11 +154,6 @@ export const WIDGET_CSS = String.raw`
   font-weight: 700;
   color: var(--qs-primary);
   line-height: 1.1;
-}
-
-.quickspin-label {
-  color: var(--qs-muted);
-  font-size: 13px;
 }
 
 .quickspin-notes {
@@ -180,16 +182,8 @@ export const WIDGET_CSS = String.raw`
   font-weight: 600;
   cursor: pointer;
 }
-
-.quickspin-btn-primary {
-  background: var(--qs-primary);
-  color: #10111a;
-}
-
-.quickspin-btn-ghost {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--qs-text);
-}
+.quickspin-btn-primary { background: var(--qs-primary); color: #10111a; }
+.quickspin-btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--qs-text); }
 
 .quickspin-felt {
   display: flex;
@@ -209,16 +203,41 @@ export const WIDGET_CSS = String.raw`
   font-weight: 600;
   cursor: pointer;
 }
+.quickspin-felt-btn:hover { border-color: var(--qs-primary); }
 
-.quickspin-felt-btn:hover {
-  border-color: var(--qs-primary);
-}
-
-.quickspin-reduction {
+.quickspin-reduction,
+.quickspin-extension {
   font-size: 13px;
   font-weight: 700;
-  color: var(--qs-success);
 }
+.quickspin-reduction { color: var(--qs-success); }
+.quickspin-extension { color: #ff9b70; }
+
+.quickspin-receipt-title {
+  font-family: var(--qs-monospace);
+  font-size: 11px;
+  letter-spacing: .12em;
+  color: var(--qs-muted);
+}
+
+.quickspin-receipt {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 430px);
+}
+
+.quickspin-receipt-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 8px;
+  background: var(--qs-elevated);
+  border: 1px solid var(--qs-border);
+  border-radius: 10px;
+}
+.quickspin-receipt-cell span { color: var(--qs-muted); font-size: 10px; }
+.quickspin-receipt-cell strong { font-family: var(--qs-monospace); font-size: 13px; }
 
 .quickspin-footer {
   display: flex;
@@ -231,34 +250,24 @@ export const WIDGET_CSS = String.raw`
   color: var(--qs-muted);
 }
 
-.quickspin-progress {
-  height: 3px;
-  background: var(--qs-border);
-}
-
+.quickspin-progress { height: 3px; background: var(--qs-border); }
 .quickspin-progress-fill {
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, var(--qs-primary), #ffe06a);
   transition: width 160ms linear;
 }
-
 .quickspin-progress-fill.indeterminate {
   width: 34% !important;
   animation: qs-slide 1.1s ease-in-out infinite;
 }
-
-@keyframes qs-slide {
-  0% { margin-left: -34%; }
-  100% { margin-left: 100%; }
-}
+@keyframes qs-slide { 0% { margin-left: -34%; } 100% { margin-left: 100%; } }
 
 .quickspin-games {
   display: flex;
   gap: 6px;
   padding: 8px 14px 0;
 }
-
 .quickspin-gamebtn {
   appearance: none;
   border: 1px solid var(--qs-border);
@@ -270,11 +279,7 @@ export const WIDGET_CSS = String.raw`
   border-radius: 999px;
   cursor: pointer;
 }
-
-.quickspin-gamebtn[aria-pressed="true"] {
-  color: var(--qs-primary);
-  border-color: var(--qs-primary);
-}
+.quickspin-gamebtn[aria-pressed="true"] { color: var(--qs-primary); border-color: var(--qs-primary); }
 
 .quickspin-canvas:focus-visible,
 .quickspin-btn:focus-visible,
@@ -284,6 +289,11 @@ export const WIDGET_CSS = String.raw`
 .quickspin-gamebtn:focus-visible {
   outline: 2px solid var(--qs-primary);
   outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .quickspin-receipt { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quickspin-footer { align-items: flex-start; flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {

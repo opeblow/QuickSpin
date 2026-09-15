@@ -1,0 +1,67 @@
+project: QuickSpin
+framework: HACKATHON_HANDOFF
+from: JUDGE_ASSURANCE_NEGATIVE_PATH
+to: FINAL_QC_AND_SUBMISSION_FINISHER
+handoff_status: ACTIVE_WITH_BLOCKING_FINAL_GATES
+readiness: BUILD_CANDIDATE_READY_WITH_LIMITATIONS
+project_complete: false
+
+what_is_verified:
+  - exact_12_second_control_and_quickspin_happy_path
+  - five_part_reality_anchor_pattern
+  - primary_source_real_negative_event
+  - explicit_failed_outcome_persistence
+  - controlled_real_promise_rejection_negative_path
+  - unknown_insufficient_evidence_signal_rejection
+  - execution_signal_gameplay_tests
+  - signed_wait_receipt
+  - dependency_security_zero_full_and_production_audit
+  - package_boundary_no_dev_toolchain_leak
+  - node_22_24_ci_green
+  - codeql_green
+  - typecheck_format_tests_sdk_build_demo_build
+  - qa_bank_and_rehearsal_pack_prepared
+  - submission_copy_draft_prepared
+
+canonical_evidence:
+  - evidence/REALITY-ANCHOR.md
+  - evidence/FAILURE-LEDGER.md
+  - evidence/RUBRIC-TRACEABILITY.md
+  - evidence/JUDGE-CYCLE.md
+  - evidence/CYCLE-GATE-MATRIX.md
+  - evidence/RECONCILIATION.md
+  - evidence/GATE-REPORT.md
+  - evidence/JUDGE-QA.md
+  - evidence/Q&A-REHEARSAL.md
+  - evidence/CLAIM-LEDGER.md
+  - evidence/security/SECURITY-GATE.md
+  - .pbpd/state/ACTIVITY-TRACE.yaml
+
+must_finish_before_project_complete:
+  - enable_and_verify_public_runtime_returned_page_url
+  - inspect_final_runtime_desktop_and_mobile
+  - capture_negative_path_and_wait_receipt_demo_video
+  - perform_live_qa_rehearsal_against_claim_ledger
+  - lock_submission_runtime_repo_video_copy_and_evidence_links
+  - run_terminal_reconciliation_and_final_qc
+
+nonblocking_followup:
+  - broader_user_validation_of_perceived_wait_effect
+
+forbidden_claims:
+  - QuickSpin reduces provider latency
+  - every wait feels shorter
+  - controlled demo failure is a live provider outage
+  - expected_pages_hostname_is_a_verified_runtime
+  - npm package is published without registry evidence
+  - hosted analytics exist today
+  - absolute_security_complete
+  - PROJECT_COMPLETE before all blocking final gates pass
+
+failure_policy:
+  principle: REAL_FAILURE_GT_FAKE_SUCCESS
+  ledger: evidence/FAILURE-LEDGER.md
+  preserve_red_runs: true
+  unknown_policy: NO_EVIDENCE_NO_CLAIM
+
+rollback: Finalization stays isolated on final-judge-package until final checks are green; main remains the last merged canonical base.

@@ -58,13 +58,13 @@ export class SessionStateMachine {
     return TERMINAL.has(this._status);
   }
 
-  /** Transition to `to`; returns false (and emits nothing) if disallowed. */
   transition(to: SessionStatus): boolean {
     if (this._status === to) return true;
     const from = this._status;
     const allowed = ALLOWED[from];
     if (!allowed || !allowed.has(to)) return false;
     this._status = to;
+    if (to === "idle") this._progress = null;
     this._emit({ type: "phase", data: { from, to } });
     return true;
   }

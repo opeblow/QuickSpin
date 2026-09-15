@@ -1,7 +1,7 @@
 {
   "name": "quickspin",
   "version": "0.1.0",
-  "description": "QuickSpin — turn AI wait time into play time. An embeddable wait-game SDK for any AI app, built for the Commonsmade 'Make Waiting for AI Fun' hackathon.",
+  "description": "QuickSpin — a phase-aware playable waiting runtime for AI apps with measurable Wait Receipts.",
   "author": "QuickSpin team",
   "license": "MIT",
   "repository": {
@@ -41,7 +41,10 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json}\" \"*.{json,md}\" \".github/workflows/*.yml\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json}\" \"*.{json,md}\" \".github/workflows/*.yml\"",
-    "check": "npm run typecheck && npm run format:check && npm run test && npm run build:sdk"
+    "judge:verify": "node scripts/verify-judge-evidence.mjs",
+    "check": "npm run typecheck && npm run format:check && npm run test && npm run judge:verify && npm run build:sdk",
+    "release:verify": "npm run check && npm run build",
+    "prepublishOnly": "npm run check"
   },
   "peerDependencies": {
     "react": ">=17"
@@ -58,7 +61,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "^5.5.4",
-    "vite": "^5.4.8",
-    "vitest": "^2.1.9"
+    "vite": "^7.3.6",
+    "vitest": "^5.0.0"
   }
 }

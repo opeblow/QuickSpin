@@ -1,0 +1,429 @@
+/* Judge-facing visual delta: make QuickSpin read like a timing instrument + play receipt,
+   not a generic SaaS landing page. This layer intentionally overrides demo.css only. */
+
+:root {
+  --bg: #f2efe6;
+  --surface: #fffdf7;
+  --border: #23211d;
+  --ink: #171612;
+  --muted: #666158;
+  --brand: #5d50e7;
+  --brand-ink: #fffdf7;
+  --accent: #08a79d;
+  --amber: #ffd84d;
+  --danger: #d83b3f;
+  --shadow: 7px 7px 0 rgba(35, 33, 29, 0.13);
+}
+
+body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(rgba(35, 33, 29, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35, 33, 29, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.wrap {
+  max-width: 1120px;
+}
+
+.nav {
+  background: rgba(242, 239, 230, 0.92);
+  border-bottom: 2px solid var(--border);
+  backdrop-filter: blur(14px);
+}
+
+.logo {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.logo img {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: 2px 2px 0 rgba(35, 33, 29, 0.18);
+}
+
+.logo span:last-child {
+  color: var(--ink);
+}
+
+.nav-links a {
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.nav-links a.cta {
+  border: 1px solid var(--border);
+  box-shadow: 2px 2px 0 var(--border);
+}
+
+.hero {
+  position: relative;
+  padding-top: 92px;
+  text-align: left;
+}
+
+.hero::before {
+  content: "WAIT STATE / 00:12 / PLAYABLE";
+  position: absolute;
+  top: 44px;
+  left: 22px;
+  font: 800 11px/1 var(--mono);
+  letter-spacing: 0.13em;
+  color: var(--ink);
+  padding: 8px 10px 7px;
+  background: var(--amber);
+  border: 1px solid var(--border);
+  box-shadow: 3px 3px 0 var(--border);
+}
+
+.hero-badge {
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  border-left: 4px solid var(--brand);
+  padding: 4px 0 4px 10px;
+  margin-bottom: 18px;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.hero h1 {
+  max-width: 930px;
+  font-size: clamp(44px, 6.8vw, 76px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  margin-bottom: 24px;
+}
+
+.hero h1 em {
+  color: var(--ink);
+  background: linear-gradient(transparent 62%, var(--amber) 62%);
+  padding: 0 0.04em;
+}
+
+.hero .lead {
+  max-width: 780px;
+  margin: 0 0 30px;
+  font-size: 18px;
+}
+
+.hero-demo {
+  position: relative;
+  max-width: none;
+  margin: 0 0 28px;
+  padding: 13px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: visible;
+}
+
+.hero-demo::before {
+  content: "SPINNER → PLAY → RECEIPT";
+  position: absolute;
+  right: 14px;
+  top: -15px;
+  z-index: 2;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  font: 800 10px/1 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.hero-canvas {
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(93, 80, 231, 0.08), transparent 26%),
+    linear-gradient(135deg, #fbf9f2, #f0ede4);
+}
+
+.cta-row {
+  justify-content: flex-start;
+}
+
+.btn {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 rgba(35, 33, 29, 0.18);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--border);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 rgba(35, 33, 29, 0.18);
+}
+
+.btn.primary {
+  border-color: var(--border);
+  box-shadow: 4px 4px 0 var(--border);
+}
+
+.btn.ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border);
+}
+
+#run-failure {
+  color: var(--danger);
+  border-color: var(--danger);
+  box-shadow: 3px 3px 0 rgba(216, 59, 63, 0.18);
+}
+
+#run-failure:hover:not(:disabled) {
+  background: #fff1ef;
+  box-shadow: 5px 5px 0 rgba(216, 59, 63, 0.18);
+}
+
+#reset-stats {
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.sub {
+  max-width: 850px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.demo-section {
+  position: relative;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 30px;
+  margin-top: 18px;
+}
+
+.demo-section::before {
+  content: "LIVE WAIT LAB";
+  position: absolute;
+  top: -14px;
+  left: 20px;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: #fff;
+  font: 800 10px/1 var(--mono);
+  letter-spacing: 0.11em;
+}
+
+.hostlabel,
+.steps-hostlabel {
+  font-family: var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+.seg {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px;
+}
+
+.seg button {
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--amber);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.chat {
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  background-color: #fbf9f2;
+  background-image: linear-gradient(rgba(35, 33, 29, 0.035) 1px, transparent 1px);
+  background-size: 100% 26px;
+}
+
+.bubble {
+  border-radius: 5px;
+}
+
+.bubble.user {
+  border: 1px solid var(--border);
+  border-radius: 5px 5px 1px 5px;
+  box-shadow: 2px 2px 0 rgba(35, 33, 29, 0.16);
+}
+
+.bubble.ai {
+  border: 1px solid var(--border);
+  border-radius: 5px 5px 5px 1px;
+}
+
+.progress-track {
+  height: 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--surface);
+}
+
+.progress-track .fill {
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, var(--brand) 0 14px, var(--accent) 14px 28px);
+}
+
+.qs-phase {
+  padding: 8px 10px;
+  border-left: 4px solid var(--accent);
+  background: rgba(8, 167, 157, 0.07);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.event-log {
+  position: relative;
+  border: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  background: #fffdf7;
+  padding: 28px 12px 12px;
+  max-height: 150px;
+}
+
+.event-log::before {
+  content: "EVIDENCE FEED / OBSERVED EVENTS";
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  color: var(--muted);
+  font: 800 9px/1 var(--mono);
+  letter-spacing: 0.1em;
+}
+
+.stats-grid {
+  gap: 10px;
+}
+
+.stat {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 rgba(35, 33, 29, 0.1);
+  padding-top: 20px;
+  overflow: hidden;
+}
+
+.stat::before {
+  content: "RECEIPT";
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 3px 6px;
+  background: var(--ink);
+  color: var(--surface);
+  font: 700 8px/1 var(--mono);
+  letter-spacing: 0.12em;
+}
+
+.stat .num {
+  color: var(--ink);
+  font-size: 27px;
+}
+
+.section {
+  position: relative;
+  padding-top: 8px;
+}
+
+.section h2 {
+  display: inline-block;
+  padding-bottom: 6px;
+  border-bottom: 4px solid var(--amber);
+  font-size: clamp(25px, 3vw, 34px);
+}
+
+.game-list,
+.steps,
+.plans {
+  gap: 12px;
+}
+
+.game,
+.step,
+.plan {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: 3px 3px 0 rgba(35, 33, 29, 0.1);
+}
+
+.game:nth-child(1) {
+  border-top: 5px solid var(--brand);
+}
+
+.game:nth-child(2) {
+  border-top: 5px solid var(--accent);
+}
+
+.game:nth-child(3) {
+  border-top: 5px solid var(--amber);
+}
+
+kbd,
+.step code {
+  border-color: var(--border);
+  border-radius: 3px;
+  background: #ebe6da;
+}
+
+.code {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 5px 5px 0 rgba(35, 33, 29, 0.16);
+}
+
+.plan.hot {
+  border: 2px solid var(--brand);
+  box-shadow: 5px 5px 0 rgba(93, 80, 231, 0.2);
+}
+
+.footer {
+  border-top: 2px solid var(--border);
+  font-family: var(--mono);
+}
+
+@media (max-width: 720px) {
+  .hero {
+    padding-top: 82px;
+  }
+
+  .hero::before {
+    top: 38px;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 12vw, 56px);
+  }
+
+  .hero .lead {
+    font-size: 16px;
+  }
+
+  .demo-section {
+    padding: 22px 14px 16px;
+  }
+
+  .btn {
+    flex: 1 1 160px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}

@@ -1,33 +1,37 @@
 import type { CheckoutResult, PlanOption } from "./types";
 
-/** Plans only advertise features that exist today; backlog items are marked. */
+/**
+ * The core SDK stays honest and usable on Free. Paid value is service/hosted value;
+ * roadmap software stays explicitly marked as backlog instead of pretending that
+ * already-public SDK capabilities are Pro-only.
+ */
 export const PLANS: PlanOption[] = [
   {
     id: "free",
-    name: "Free",
+    name: "SDK",
     label: "Free",
     priceUsd: 0,
     cadence: "free",
     features: [
       "Wait Runner + Orbit Catch",
-      "Local personal bests and streaks",
-      "Dark and light themes",
-      "Core session lifecycle",
+      "Phase-aware wait runtime",
+      "Local bests, streaks, and Wait Receipts",
+      "Themes and analytics events",
     ],
   },
   {
     id: "pro",
-    name: "Pro",
-    label: "Pro",
+    name: "Team Pilot",
+    label: "Team Pilot",
     priceUsd: 9,
     cadence: "/mo",
     highlighted: true,
     features: [
-      "Everything in Free",
-      "Brand customization",
-      { text: "Analytics events", backlog: true },
+      "Everything in the open SDK",
+      "Brand preset configuration",
+      "Priority integration support",
+      { text: "Hosted cross-device analytics", backlog: true },
       { text: "Additional game packs", backlog: true },
-      "Priority support",
     ],
   },
 ];
@@ -39,15 +43,11 @@ export function getLastCheckoutError(): string | null {
 }
 
 export interface CheckoutFlowOptions {
-  /** Stripe Payment Link URLs per paid plan id. When set, selecting that plan
-   *  opens a real Stripe checkout and can genuinely generate revenue. When
-   *  unset, the same flow renders the honest confirmed-result preview. */
+  /** Stripe Payment Link URLs per paid plan id. */
   paymentLinks?: Record<string, string>;
 }
 
-/** Build a small checkout surface. Success is only ever shown from the host's
- *  confirmed result — the preview never fabricates a payment, and Stripe
- *  redirects are real charges that land in the host's own dashboard. */
+/** Build a checkout surface. The preview never fabricates a real Stripe payment. */
 export function createCheckoutFlow(
   onCheckout: (planId: string) => Promise<{ ok: boolean; paymentId?: string } | CheckoutResult>,
   opts: CheckoutFlowOptions = {}
@@ -84,47 +84,13 @@ export function createCheckoutFlow(
       `<p style="margin:0 0 16px;color:#a9b0c0;font-size:12.5px;line-height:1.5;">` +
       (livePlans.length
         ? `<span style="background:rgba(22,163,106,0.15);color:#35d693;border-radius:6px;padding:2px 7px;font-weight:600;font-size:11px;">Stripe · real payment</span>` +
-          ` Selecting a live plan opens a real Stripe Payment Link. The result lives in your Stripe dashboard — QuickSpin never claims a payment it can't verify.`
+          ` Selecting a live plan opens a real Stripe Payment Link. Stripe is the payment source of truth.`
         : `<span style="background:rgba(229,72,77,0.15);color:#ff8f93;border-radius:6px;padding:2px 7px;font-weight:600;font-size:11px;">Checkout preview</span>` +
-          ` No real payment is made in this demo. Success is only shown when a payment provider confirms it.`) +
+          ` No real payment is made in this demo. The preview is labeled and never impersonates Stripe.`) +
       `</p>`;
-
-    for (const plan of PLANS) {
-      const row = document.createElement("div");
-      row.className = "qs-plan";
-      row.style.cssText =
-        "display:flex;align-items:center;justify-content:space-between;padding:14px;border-radius:12px;" +
-        "margin-bottom:10px;cursor:pointer;border:1px solid " +
-        (plan.highlighted ? "rgba(102,88,232,0.55)" : "rgba(255,255,255,0.08)") +
-        ";background:" +
-        (plan.highlighted ? "rgba(102,88,232,0.10)" : "rgba(255,255,255,0.02)") +
-        ";";
-      row.tabIndex = 0;
-      const feats = plan.features
-        .map((f) =>
-          typeof f === "string"
-            ? `<span>· ${f}</span>`
-            : `<span style="opacity:.65">· ${f.text} <span style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#ffb547;">(after the hackathon)</span></span>`
-        )
-        .join("<br/>");
-      row.innerHTML =
-        `<div><div style="font-weight:600;font-size:14px;">${plan.name}${plan.highlighted ? ' <span style="color:#8b7cff;font-size:10.5px;font-weight:700;letter-spacing:.4px;">RECOMMENDED</span>' : ""}</div>` +
-        `<div style="color:#a9b0c0;font-size:11px;margin-top:4px;line-height:1.6;">${feats}</div></div>` +
-        `<div style="text-align:right;white-space:nowrap;"><div style="font-size:18px;font-weight:700;">$${plan.priceUsd}<span style="font-size:11px;color:#888;font-weight:400;"> ${plan.cadence}</span></div></div>`;
-      const doSelect = () => void select(plan);
-      row.addEventListener("click", doSelect);
-      row.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          doSelect();
-        }
-      });
-      card.appendChild(row);
-    }
 
     const statusEl = document.createElement("div");
     statusEl.style.cssText = "min-height:18px;margin-top:10px;font-size:12px;color:#a9b0c0;";
-    card.appendChild(statusEl);
 
     const close = () => {
       if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
@@ -141,11 +107,11 @@ export function createCheckoutFlow(
         window.location.assign(link);
         return;
       }
-      statusEl.textContent = "Processing…";
+      statusEl.textContent = "Processing preview…";
       try {
         const result = await onCheckout(plan.id);
         if (result.ok) {
-          statusEl.textContent = `✓ ${plan.name} ${plan.priceUsd > 0 ? "confirmed" : "active"}${result.paymentId ? " · " + result.paymentId : ""}`;
+          statusEl.textContent = `✓ ${plan.name} ${plan.priceUsd > 0 ? "preview confirmed" : "active"}${result.paymentId ? " · " + result.paymentId : ""}`;
         } else {
           statusEl.textContent = "Checkout declined. No payment was made.";
           lastCheckoutError = "declined";
@@ -156,6 +122,40 @@ export function createCheckoutFlow(
       }
     };
 
+    for (const plan of PLANS) {
+      const row = document.createElement("div");
+      row.className = "qs-plan";
+      row.style.cssText =
+        "display:flex;align-items:center;justify-content:space-between;padding:14px;border-radius:12px;" +
+        "margin-bottom:10px;cursor:pointer;border:1px solid " +
+        (plan.highlighted ? "rgba(102,88,232,0.55)" : "rgba(255,255,255,0.08)") +
+        ";background:" +
+        (plan.highlighted ? "rgba(102,88,232,0.10)" : "rgba(255,255,255,0.02)") +
+        ";";
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      const feats = plan.features
+        .map((f) =>
+          typeof f === "string"
+            ? `<span>· ${f}</span>`
+            : `<span style="opacity:.65">· ${f.text} <span style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#ffb547;">(after the hackathon)</span></span>`
+        )
+        .join("<br/>");
+      row.innerHTML =
+        `<div><div style="font-weight:600;font-size:14px;">${plan.name}${plan.highlighted ? ' <span style="color:#8b7cff;font-size:10.5px;font-weight:700;letter-spacing:.4px;">PILOT</span>' : ""}</div>` +
+        `<div style="color:#a9b0c0;font-size:11px;margin-top:4px;line-height:1.6;">${feats}</div></div>` +
+        `<div style="text-align:right;white-space:nowrap;"><div style="font-size:18px;font-weight:700;">$${plan.priceUsd}<span style="font-size:11px;color:#888;font-weight:400;"> ${plan.cadence}</span></div></div>`;
+      const doSelect = () => void select(plan);
+      row.addEventListener("click", doSelect);
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          doSelect();
+        }
+      });
+      card.appendChild(row);
+    }
+
     card.querySelector(".qs-checkout-close")?.addEventListener("click", close);
     root.addEventListener("click", (e) => {
       if (e.target === root) close();
@@ -163,14 +163,20 @@ export function createCheckoutFlow(
     card.appendChild(statusEl);
     root.appendChild(card);
 
-    const focusables = Array.from(card.querySelectorAll<HTMLElement>(".qs-plan"));
+    const focusables = Array.from(
+      card.querySelectorAll<HTMLElement>(".qs-plan, .qs-checkout-close")
+    );
     root.addEventListener("keydown", (e) => {
       if (e.key === "Escape") close();
-      if (e.key === "Tab") {
-        const list = [focusables[focusables.length - 1], focusables[0]];
-        if (e.shiftKey ? e.target === focusables[0] : e.target === list[0]) {
+      if (e.key === "Tab" && focusables.length > 1) {
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && e.target === first) {
           e.preventDefault();
-          (e.shiftKey ? focusables[focusables.length - 1] : focusables[0]).focus();
+          last.focus();
+        } else if (!e.shiftKey && e.target === last) {
+          e.preventDefault();
+          first.focus();
         }
       }
     });
@@ -184,8 +190,7 @@ export function createCheckoutFlow(
       lastCheckoutError = null;
       overlay = build();
       document.body.appendChild(overlay);
-      const first = overlay.querySelector<HTMLElement>(".qs-plan");
-      first?.focus();
+      overlay.querySelector<HTMLElement>(".qs-checkout-close")?.focus();
     },
     close() {
       if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
